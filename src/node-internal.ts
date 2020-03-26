@@ -114,4 +114,9 @@ export default abstract class Node {
   toString (): string {
     throw new Error('Node.toString() is abstract - see the subclasses instead')
   }
+
+  static fromRDFJS(node: Term): Node {
+    const NodeType = node.constructor[Symbol.species]
+    return new NodeType(node.value)
+  }
 }

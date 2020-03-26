@@ -1,16 +1,15 @@
 import RdflibBlankNode from './blank-node'
 import ClassOrder from './class-order'
 import Literal from './literal'
-import Node from './node-internal'
+import RdfLibTerm from './node-internal'
 import {
   Bindings,
   CollectionTermType,
   FromValueReturns,
-  ValueType
 } from './types'
 import Variable from './variable'
 import { isTerm } from './utils/terms'
-import { Term } from './tf-types'
+import { Term, ValueType } from './tf-types'
 
 /**
  * Creates an RDF Node from a native javascript value.
@@ -20,7 +19,7 @@ import { Term } from './tf-types'
  * @param value {Node|Date|String|Number|Boolean|Undefined}
  * @return {Node|Collection}
  */
-export function fromValue <T extends FromValueReturns<C> = any, C extends Node = any>(value: ValueType): T {
+export function fromValue <T extends FromValueReturns<C> = any, C extends RdfLibTerm = any>(value: ValueType): T {
   if (typeof value === 'undefined' || value === null) {
     return value as T
   }
@@ -42,8 +41,8 @@ export function fromValue <T extends FromValueReturns<C> = any, C extends Node =
  * Use generic T to control the contents of the array.
  */
 export default class Collection<
-  T extends Node = Node | RdflibBlankNode | Collection<any> | Literal | Variable
-> extends Node implements Term {
+  T extends RdfLibTerm = RdfLibTerm | RdflibBlankNode | Collection<any> | Literal | Variable
+> extends RdfLibTerm implements Term {
   static termType: typeof CollectionTermType = CollectionTermType
   termType: typeof CollectionTermType = CollectionTermType
 

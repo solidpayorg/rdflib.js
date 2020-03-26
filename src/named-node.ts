@@ -1,5 +1,5 @@
 import ClassOrder from './class-order'
-import Node from './node-internal'
+import RdfLibTerm from './node-internal'
 import { NamedNodeTermType } from './types'
 import { termValue } from './utils/termValue'
 import { NamedNode as TFNamedNode } from './tf-types'
@@ -8,7 +8,7 @@ import { isTerm } from './utils/terms'
 /**
  * A named (IRI) RDF node
  */
-export default class NamedNode extends Node implements TFNamedNode {
+export default class NamedNode extends RdfLibTerm implements TFNamedNode {
   termType: typeof NamedNodeTermType = NamedNodeTermType
   classOrder = ClassOrder.NamedNode
 
@@ -38,28 +38,28 @@ export default class NamedNode extends Node implements TFNamedNode {
    * Returns an $rdf node for the containing directory, ending in slash.
    */
   dir (): NamedNode | null {
-     var str = this.value.split('#')[0]
-     var p = str.slice(0, -1).lastIndexOf('/')
-     var q = str.indexOf('//')
-     if ((q >= 0 && p < q + 2) || p < 0) return null
-     return new NamedNode(str.slice(0, p + 1))
-   }
+    var str = this.value.split('#')[0]
+    var p = str.slice(0, -1).lastIndexOf('/')
+    var q = str.indexOf('//')
+    if ((q >= 0 && p < q + 2) || p < 0) return null
+    return new NamedNode(str.slice(0, p + 1))
+  }
 
   /**
    * Returns an NN for the whole web site, ending in slash.
    * Contrast with the "origin" which does NOT have a trailing slash
    */
   site (): NamedNode {
-     var str = this.value.split('#')[0]
-     var p = str.indexOf('//')
-     if (p < 0) throw new Error('This URI does not have a web site part (origin)')
-     var q = str.indexOf('/', p+2)
-     if (q < 0) {
-       return new NamedNode(str.slice(0) + '/')   // Add slash to a bare origin
-     } else {
-       return new NamedNode(str.slice(0, q + 1))
-     }
-   }
+    var str = this.value.split('#')[0]
+    var p = str.indexOf('//')
+    if (p < 0) throw new Error('This URI does not have a web site part (origin)')
+    var q = str.indexOf('/', p + 2)
+    if (q < 0) {
+      return new NamedNode(str.slice(0) + '/')   // Add slash to a bare origin
+    } else {
+      return new NamedNode(str.slice(0, q + 1))
+    }
+  }
 
   /**
    * Creates the fetchable named node for the document.
@@ -109,5 +109,12 @@ export default class NamedNode extends Node implements TFNamedNode {
       return value
     }
     return new NamedNode(value)
+  }
+
+  /**
+   *
+   */
+  static fromRDFJS (namedNode: TFNamedNode): NamedNode {
+    return new NamedNode(namedNode.value)
   }
 }

@@ -1,4 +1,4 @@
-import Node from './node-internal'
+import RdfLibTerm from './node-internal'
 import RDFlibVariable from './variable'
 import RDFlibBlankNode from './blank-node'
 import Collection from './collection'
@@ -85,7 +85,7 @@ export interface Bindings {
 }
 
 /** All the types that a .fromValue() method might return */
-export type FromValueReturns<C extends Node = any> = Term | undefined | null | Collection<C>
+export type FromValueReturns<C extends RdfLibTerm = any> = RdfLibTerm | undefined | null | Collection<C>
 
 export interface IRDFlibDataFactory extends DataFactory<
   RDFlibNamedNode | RDFlibBlankNode | RDFlibLiteral | Collection | Statement

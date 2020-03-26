@@ -6,6 +6,14 @@ import {
   NamedNodeTermType,
   VariableTermType,
 } from './types'
+import RdfLibNamedNode from './named-node'
+import RdfLibBlankNode from './blank-node'
+import RdfLibLiteral from './literal'
+import RdfLibVariable from './variable'
+import RdfLibDefaultGraph from './default-graph'
+import RdfLibTerm from './node-internal'
+import RdfLibQuad from './statement'
+import Collection from './collection'
 
 /**
  * RDF/JS spec Term
@@ -98,6 +106,10 @@ export interface DefaultGraph extends Term {
   value: string;
 }
 
+/** A type for values that serves as inputs */
+export type ValueType = Term | Node | Date | string | number | boolean | undefined | null | Collection
+
+
 /**
  * RDF/JS spec DataFactory
  *
@@ -107,28 +119,28 @@ export interface DefaultGraph extends Term {
  */
 export interface RdfJsDataFactory {
   /** Returns a new instance of NamedNode. */
-  namedNode: (value: string) => NamedNode,
+  namedNode: (value: string) => RdfLibNamedNode,
 
   /**
    * Returns a new instance of BlankNode.
    * If the value parameter is undefined a new identifier for the
    * blank node is generated for each call.
    */
-  blankNode: (value?: string) => BlankNode,
+  blankNode: (value?: string) => RdfLibBlankNode,
 
   /**
    * Returns a new instance of Literal.
    * If languageOrDatatype is a NamedNode, then it is used for the value of datatype.
    * Otherwise languageOrDatatype is used for the value of language. */
-  literal: (value: string, languageOrDatatype: string | NamedNode) => Literal,
+  literal: (value: string, languageOrDatatype: string | NamedNode) => RdfLibLiteral,
 
   /** Returns a new instance of Variable. This method is optional. */
-  variable?: (value: string) => Variable,
+  variable?: (value: string) => RdfLibVariable,
 
   /**
    * Returns an instance of DefaultGraph.
    */
-  defaultGraph: () => DefaultGraph | NamedNode | BlankNode,
+  defaultGraph: () => RdfLibDefaultGraph | RdfLibNamedNode | RdfLibBlankNode,
 
   /**
    * Returns a new instance of the specific Term subclass given by original.termType
@@ -136,13 +148,13 @@ export interface RdfJsDataFactory {
    * such that newObject.equals(original) returns true.
    * Not implemented in RDFJS, so optional.
    */
-  fromTerm?: (original: Term) => Term
+  fromTerm?: (original: Term) => RdfLibTerm
 
   /**
    * Returns a new instance of Quad, such that newObject.equals(original) returns true.
    * Not implemented in RDFJS, so optional.
    */
-  fromQuad?: (original: Quad) => Quad
+  fromQuad?: (original: Quad) => RdfLibQuad
 
   /**
    * Returns a new instance of Quad.
@@ -153,7 +165,7 @@ export interface RdfJsDataFactory {
     predicate: Term,
     object: Term,
     graph?: Term,
-  ) => Quad<any, any, any, any>
+  ) => RdfLibQuad
 
   /**
    * Check for specific features/behaviour on the factory.

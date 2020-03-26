@@ -1,17 +1,17 @@
 import ClassOrder from './class-order'
-import Node from './node-internal'
+import RdfLibTerm from './node-internal'
 import { VariableTermType } from './types'
 import * as Uri from './uri'
 import { Variable as TFVariable } from './tf-types'
 
 /**
-* Variables are placeholders used in patterns to be matched.
-* In cwm they are symbols which are the formula's list of quantified variables.
-* In sparql they are not visibly URIs.  Here we compromise, by having
-* a common special base URI for variables. Their names are uris,
-* but the ? notation has an implicit base uri of 'varid:'
-*/
-export default class Variable extends Node implements TFVariable {
+ * Variables are placeholders used in patterns to be matched.
+ * In cwm they are symbols which are the formula's list of quantified variables.
+ * In sparql they are not visibly URIs.  Here we compromise, by having
+ * a common special base URI for variables. Their names are uris,
+ * but the ? notation has an implicit base uri of 'varid:'
+ */
+export default class Variable extends RdfLibTerm implements TFVariable {
   termType: typeof VariableTermType = VariableTermType
 
   /** The base string for a variable's name */

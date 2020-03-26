@@ -1,7 +1,7 @@
 // This file attaches all functionality to Node
 // that would otherwise require circular dependencies.
 import { fromValue } from './collection'
-import Node from './node-internal'
+import RdfLibTerm from './node-internal'
 import Namespace from './namespace'
 import { isCollection, isLiteral } from './utils/terms'
 import { Term } from './tf-types'
@@ -14,9 +14,9 @@ import { Term } from './tf-types'
  * @param value {Node|Date|String|Number|Boolean|Undefined}
  * @return {Node|Collection}
  */
-Node.fromValue = fromValue;
+RdfLibTerm.fromValue = fromValue;
 
-export default Node
+export default RdfLibTerm
 
 const ns = { xsd: Namespace('http://www.w3.org/2001/XMLSchema#') }
 
@@ -24,9 +24,9 @@ const ns = { xsd: Namespace('http://www.w3.org/2001/XMLSchema#') }
  * Gets the javascript object equivalent to a node
  * @param term The RDF node
  */
-Node.toJS = function (term: Term): Term | boolean | number | Date | string | any[] {
+RdfLibTerm.toJS = function (term: Term): Term | boolean | number | Date | string | any[] {
   if (isCollection(term)) {
-    return term.elements.map(Node.toJS) // Array node (not standard RDFJS)
+    return term.elements.map(RdfLibTerm.toJS) // Array node (not standard RDFJS)
   }
   if (!isLiteral(term)) return term
   if (term.datatype.equals(ns.xsd('boolean'))) {

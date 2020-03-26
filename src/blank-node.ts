@@ -1,5 +1,5 @@
 import ClassOrder from './class-order'
-import Node from './node-internal'
+import RdfLibTerm from './node-internal'
 import IndexedFormula from './store'
 import { BlankNodeTermType } from './types'
 import { BlankNode as TFBlankNode } from './tf-types'
@@ -8,12 +8,12 @@ import { BlankNode as TFBlankNode } from './tf-types'
  * An RDF blank node is a Node without a URI
  * @link https://rdf.js.org/data-model-spec/#blanknode-interface
  */
-export default class BlankNode extends Node implements TFBlankNode {
-  termType: typeof BlankNodeTermType = BlankNodeTermType;
+export default class BlankNode extends RdfLibTerm implements TFBlankNode {
+  termType: typeof BlankNodeTermType = BlankNodeTermType
   /**
    * The next unique identifier for blank nodes
    */
-  static nextId: number = 0;
+  static nextId: number = 0
   static NTAnonymousNodePrefix: '_:' = '_:'
 
   private static getId (id: string | unknown): string {
@@ -97,5 +97,9 @@ export default class BlankNode extends Node implements TFBlankNode {
 
   toString () {
     return BlankNode.NTAnonymousNodePrefix + this.id
+  }
+
+  static fromRDFJS (blankNode: TFBlankNode): BlankNode {
+    return new BlankNode(blankNode.value)
   }
 }

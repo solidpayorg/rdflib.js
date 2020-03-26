@@ -1,4 +1,4 @@
-import Node from './node-internal'
+import RdfLibTerm from './node-internal'
 import {
   Bindings,
   GraphType,
@@ -50,10 +50,10 @@ export default class Statement implements Quad<SubjectType, PredicateType, Objec
     object: Quad_Object | Term,
     graph?: Quad_Graph | Term,
   ) {
-    this.subject = Node.fromValue(subject)
-    this.predicate = Node.fromValue(predicate)
-    this.object = Node.fromValue(object)
-    this.graph = graph == undefined ? defaultGraphNode : Node.fromValue(graph) // property currently used by rdflib
+    this.subject = RdfLibTerm.fromValue(subject)
+    this.predicate = RdfLibTerm.fromValue(predicate)
+    this.object = RdfLibTerm.fromValue(object)
+    this.graph = graph == undefined ? defaultGraphNode : RdfLibTerm.fromValue(graph) // property currently used by rdflib
   }
 
   /** @deprecated use {graph} instead */
@@ -128,5 +128,9 @@ export default class Statement implements Quad<SubjectType, PredicateType, Objec
   /** Creates a string representation of this statement */
   toString (): string {
     return this.toNT()
+  }
+
+  static fromRDFJS (quad: Quad): Statement {
+    return new Statement(quad.subject, quad.predicate, quad.object, quad.graph)
   }
 }

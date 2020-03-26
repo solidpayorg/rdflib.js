@@ -1,20 +1,16 @@
 import ClassOrder from './class-order'
 import RDFlibNamedNode from './named-node'
-import Node from './node-internal'
-import {
-  LiteralTermType,
-  ValueType
-} from './types'
+import RdfLibTerm from './node-internal'
+import { LiteralTermType } from './types'
 import { isLiteral } from './utils/terms'
 import XSD from './xsd-internal'
-import { Literal as TFLiteral, Term } from './tf-types'
+import { Literal as TFLiteral, Term, ValueType } from './tf-types'
 
 /**
  * An RDF literal, containing some value which isn't expressed as an IRI.
  * @link https://rdf.js.org/data-model-spec/#literal-interface
  */
-// @ts-ignore Incorrectly extends due to fromValue()
-export default class Literal extends Node implements TFLiteral {
+export default class Literal extends RdfLibTerm implements TFLiteral {
   termType: typeof LiteralTermType = LiteralTermType
 
   classOrder = ClassOrder.Literal
@@ -164,24 +160,23 @@ export default class Literal extends Node implements TFLiteral {
    * Builds a literal node from an input value
    * @param value - The input value
    */
-  static fromValue<T extends Literal>(value: ValueType): T {
+  static fromValue<Literal>(value: ValueType): Literal {
     if (isLiteral(value)) {
-      return value as T
+      return value as unknown as Literal
     }
     switch (typeof value) {
       case 'object':
         if (value instanceof Date) {
-          return Literal.fromDate(value) as T
+          return Literal.fromDate(value) as unknown as Literal
         }
       case 'boolean':
-        return Literal.fromBoolean(value as boolean) as T
+        return Literal.fromBoolean(value as boolean) as unknown as Literal
       case 'number':
-        return Literal.fromNumber(value as number) as T
+        return Literal.fromNumber(value as number) as unknown as Literal
       case 'string':
-        return new Literal(value) as T
+        return new Literal(value) as unknown as Literal
     }
 
-    throw new Error("Can't make literal from " + value + ' of type ' +
-      typeof value)
+    throw new Error("Can't make literal from " + value + ' of type ' + typeof value)
   }
 }

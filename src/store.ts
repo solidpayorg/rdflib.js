@@ -30,16 +30,17 @@ import {
   isQuad,
   isSubject
 } from './utils/terms'
-import Node from './node'
-import Variable from './variable'
+import RdfLibTerm from './node-internal'
+import RdfLibVariable from './variable'
 import { Query, indexedFormulaQuery } from './query'
 import UpdateManager from './update-manager'
 import {
-  Bindings,
+  Bindings
 } from './types'
-import Statement from './statement'
+import RdfLibQuad from './statement'
 import { Indexable } from './factories/factory-types'
-import NamedNode from './named-node'
+import RdfLibNamedNode from './named-node'
+import RdfLibBlankNode from './blank-node'
 import Fetcher from './fetcher'
 import {
   BlankNode,
@@ -125,7 +126,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
   /**
    * Dictionary of namespace prefixes
    */
-  namespaces: {[key: string]: string}
+  namespaces: { [key: string]: string }
 
   /** Map of iri predicates to functions to call when adding { s type X } */
   classActions: { [k: string]: Function[] }
@@ -136,25 +137,25 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
   /** Reverse mapping to redirection: aliases for this */
   aliases: any[]
   /** Redirections we got from HTTP */
-  HTTPRedirects: Quad[]
+  HTTPRedirects: RdfLibQuad[]
   /** Array of statements with this X as subject */
-  subjectIndex: Quad[]
+  subjectIndex: RdfLibQuad[]
   /** Array of statements with this X as predicate */
-  predicateIndex: Quad[]
+  predicateIndex: RdfLibQuad[]
   /** Array of statements with this X as object */
-  objectIndex: Quad[]
+  objectIndex: RdfLibQuad[]
   /** Array of statements with X as provenance */
-  whyIndex: Quad[]
+  whyIndex: RdfLibQuad[]
   index: [
-    Quad[],
-    Quad[],
-    Quad[],
-    Quad[]
+    RdfLibQuad[],
+    RdfLibQuad[],
+    RdfLibQuad[],
+    RdfLibQuad[]
   ]
   features: FeaturesType
   static handleRDFType: Function
-  _universalVariables?: TFNamedNode[]
-  _existentialVariables?: BlankNode[]
+  _universalVariables?: RdfLibNamedNode[]
+  _existentialVariables?: RdfLibBlankNode[]
 
   /** Function to remove quads from the store arrays with */
   private rdfArrayRemove: (arr: Quad[], q: Quad) => void
@@ -192,7 +193,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
     this.features = features || [
       'sameAs',
       'InverseFunctionalProperty',
-      'FunctionalProperty',
+      'FunctionalProperty'
     ]
     this.rdfArrayRemove = opts.rdfArrayRemove || RDFArrayRemove
     if (opts.dataCallback) {
@@ -205,7 +206,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
   /**
    * Gets the URI of the default graph
    */
-  static get defaultGraphURI(): string {
+  static get defaultGraphURI (): string {
     return defaultGraphURI
   }
 
@@ -213,21 +214,20 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * Gets this graph with the bindings substituted
    * @param bindings The bindings
    */
-  //@ts-ignore different from signature in Formula
-  substitute(bindings: Bindings): IndexedFormula {
+  substitute<IndexedFormula> (bindings: Bindings): IndexedFormula {
     var statementsCopy = this.statements.map(function (ea: Quad) {
-      return (ea as Statement).substitute(bindings)
+      return (ea as RdfLibQuad).substitute(bindings)
     })
     var y = new IndexedFormula()
     y.add(statementsCopy)
-    return y
+    return y as unknown as IndexedFormula
   }
 
   /**
    * Add a callback which will be triggered after a statement has been added to the store.
    * @param cb
    */
-  addDataCallback(cb: (q: Quad) => void): void {
+  addDataCallback (cb: (q: Quad) => void): void {
     if (!this.dataCallbacks) {
       this.dataCallbacks = []
     }
@@ -241,11 +241,11 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param target - The name of the document to patch
    * @param patchCallback - Callback to be called when patching is complete
    */
-  applyPatch(
+  applyPatch (
     patch: {
-        delete?: ReadonlyArray<Statement>,
-        patch?: ReadonlyArray<Statement>,
-        where?: any
+      delete?: ReadonlyArray<Quad>,
+      patch?: ReadonlyArray<Quad>,
+      where?: any
     },
     target: TFNamedNode,
     patchCallback: (errorString?: string) => void
@@ -261,7 +261,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
         // console.log('ds before substitute: ' + ds)
         if (binding) ds = ds.substitute(binding)
         // console.log('applyPatch: delete: ' + ds)
-        ds = ds.statements as Statement[]
+        ds = ds.statements
         var bad: Quad[] = []
         var ds2 = ds.map(function (st: Quad) { // Find the actual statemnts in the store
           var sts = targetKB.statementsMatching(st.subject, st.predicate, st.object, target)
@@ -295,12 +295,13 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
       }
       onDonePatch()
     }
+
     if (patch.where) {
       // log.info("Processing WHERE: " + patch.where + '\n')
       var query = new Query('patch')
       query.pat = patch.where
       query.pat.statements.map(function (st) {
-        st.graph = target
+        st.graph = RdfLibNamedNode.fromRDFJS(target)
       })
       //@ts-ignore TODO: add sync property to Query when converting Query to typescript
       query.sync = true
@@ -310,9 +311,9 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
       targetKB.query(
         query,
         function onBinding (binding) {
-        bindingsFound.push(binding)
-        // console.log('   got a binding: ' + bindingDebug(binding))
-      },
+          bindingsFound.push(binding)
+          // console.log('   got a binding: ' + bindingDebug(binding))
+        },
         targetKB.fetcher,
         function onDone () {
           if (bindingsFound.length === 0) {
@@ -334,19 +335,20 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    *
    * @param x The blank node to be declared, supported in N3
    */
-  declareExistential(x: BlankNode): BlankNode {
+  declareExistential (x: BlankNode): RdfLibBlankNode {
     if (!this._existentialVariables) this._existentialVariables = []
-    this._existentialVariables.push(x)
-    return x
+    const rdfLibBlankNode = RdfLibBlankNode.fromRDFJS(x)
+    this._existentialVariables.push(rdfLibBlankNode)
+    return rdfLibBlankNode
   }
 
   /**
    * @param features
    */
-  initPropertyActions(features: FeaturesType) {
+  initPropertyActions (features: FeaturesType) {
     // If the predicate is #type, use handleRDFType to create a typeCallback on the object
     this.propertyActions[this.rdfFactory.id(this.rdfFactory.namedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'))] =
-      [ handleRDFType ]
+      [handleRDFType]
 
     // Assumption: these terms are not redirected @@fixme
     if (ArrayIndexOf(features, 'sameAs') >= 0) {
@@ -391,13 +393,12 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param why - The document in which the triple (S,P,O) was or will be stored on the web
    * @returns The statement added to the store, or the store
    */
-  // @ts-ignore differs from signature in Formula
   add (
-    subj: Quad_Subject | Quad | Quad[] | Statement | Statement[],
+    subj: Quad_Subject | Quad | Quad[],
     pred?: Quad_Predicate,
-    obj?: Term | string,
+    obj?: Quad_Object,
     why?: Quad_Graph
-  ): Quad | null | IndexedFormula {
+  ): number {
     var i: number
     if (arguments.length === 1) {
       if (subj instanceof Array) {
@@ -409,10 +410,10 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
       } else if (isStore(subj)) {
         this.add(subj.statements)
       }
-      return this
+      return (subj as Quad[]).length
     }
     var actions: Function[]
-    var st: Quad
+    var st: RdfLibQuad
     if (!why) {
       // system generated
       why = this.fetcher ? this.fetcher.appNode : this.rdfFactory.defaultGraph()
@@ -420,39 +421,39 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
     if (typeof subj == 'string') {
       subj = this.rdfFactory.namedNode(subj)
     }
-    pred = Node.fromValue(pred)
-    const objNode = Node.fromValue(obj) as Term
-    why = Node.fromValue(why)
+    const rdfLibPredicate = RdfLibTerm.fromValue(pred)
+    const rdfLibObject = RdfLibTerm.fromValue(obj)
+    const rdfLibGraph = RdfLibTerm.fromValue(why)
     if (!isSubject(subj)) {
       throw new Error('Subject is not a subject type')
     }
-    if (!isPredicate(pred)) {
-      throw new Error(`Predicate ${pred} is not a predicate type`)
+    if (!isPredicate(rdfLibPredicate)) {
+      throw new Error(`Predicate ${rdfLibPredicate} is not a predicate type`)
     }
-    if (!isRDFlibObject(objNode)) {
-      throw new Error(`Object ${objNode} is not an object type`)
+    if (!isRDFlibObject(rdfLibObject)) {
+      throw new Error(`Object ${rdfLibObject} is not an object type`)
     }
-    if (!isGraph(why)) {
-      throw new Error("Why is not a graph type")
+    if (!isGraph(rdfLibGraph)) {
+      throw new Error('Why is not a graph type')
     }
     //@ts-ignore This is not used internally
     if (this.predicateCallback) {
       //@ts-ignore This is not used internally
-      this.predicateCallback(this, pred, why)
+      this.predicateCallback(this, rdfLibPredicate, rdfLibGraph)
     }
     // Action return true if the statement does not need to be added
-    var predHash = this.id(this.canon(pred!))
+    var predHash = this.id(this.canon(rdfLibPredicate!))
     actions = this.propertyActions[predHash] // Predicate hash
     var done = false
     if (actions) {
       // alert('type: '+typeof actions +' @@ actions='+actions)
       for (i = 0; i < actions.length; i++) {
-        done = done || actions[i](this, subj, pred, objNode, why)
+        done = done || actions[i](this, subj, rdfLibPredicate, rdfLibObject, rdfLibGraph)
       }
     }
-    if (this.holds(subj, pred, objNode, why)) { // Takes time but saves duplicates
+    if (this.holds(subj, rdfLibPredicate, rdfLibObject, rdfLibGraph)) { // Takes time but saves duplicates
       // console.log('rdflib: Ignoring dup! {' + subj + ' ' + pred + ' ' + obj + ' ' + why + '}')
-      return null // @@better to return self in all cases?
+      return 0 // @@better to return self in all cases?
     }
     // If we are tracking provenance, every thing should be loaded into the store
     // if (done) return this.rdfFactory.quad(subj, pred, obj, why)
@@ -461,11 +462,11 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
     var hash = [
       this.id(this.canon(subj)),
       predHash,
-      this.id(this.canon(objNode)),
-      this.id(this.canon(why))
+      this.id(this.canon(rdfLibObject)),
+      this.id(this.canon(rdfLibGraph))
     ]
     // @ts-ignore this will fail if you pass a collection and the factory does not allow Collections
-    st = this.rdfFactory.quad(subj, pred, objNode, why)
+    st = this.rdfFactory.quad(subj, rdfLibPredicate, rdfLibObject, rdfLibGraph)
     for (i = 0; i < 4; i++) {
       var ix = this.index[i]
       var h = hash[i]
@@ -484,20 +485,20 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
       }
     }
 
-    return st
+    return 1
   }
 
   /**
    * Returns the symbol with canonical URI as smushed
    * @param term - An RDF node
    */
-  canon(term: Term): Term {
+  canon (term?: Term | null): RdfLibTerm | undefined {
     if (!term) {
-      return term
+      return undefined
     }
     var y = this.redirections[this.id(term)]
     if (!y) {
-      return term
+      return RdfLibTerm.fromRDFJS(term)
     }
     return y
   }
@@ -506,7 +507,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
   /**
    * Checks this formula for consistency
    */
-  check(): void {
+  check (): void {
     this.checkStatementList(this.statements)
     for (var p = 0; p < 4; p++) {
       var ix = this.index[p]
@@ -524,7 +525,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param sts - The list of statements to check
    * @param from - An index with the array ['subject', 'predicate', 'object', 'why']
    */
-  checkStatementList(
+  checkStatementList (
     sts: ReadonlyArray<Quad>,
     from?: number
   ): boolean | void {
@@ -536,7 +537,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
     var st: Quad
     for (var j = 0; j < sts.length; j++) {
       st = sts[j]
-      var term = [ st.subject, st.predicate, st.object, st.graph ]
+      var term = [st.subject, st.predicate, st.object, st.graph]
       var arrayContains = function (a: Array<any>, x: Quad) {
         for (var i = 0; i < a.length; i++) {
           if (a[i].subject.equals(x.subject) &&
@@ -567,15 +568,16 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
   /**
    * Closes this formula (and return it)
    */
-  close(): IndexedFormula {
+  close (): IndexedFormula {
     return this
   }
 
-  // @ts-ignore incompatible with Forumala.compareTerm
-  compareTerm(u1: Term, u2: Term): number {
+  compareTerm (...args: Term[]): number {
+    const u1 = args[0]
+    const u2 = args[1]
     // Keep compatibility with downstream classOrder changes
-    if (Object.prototype.hasOwnProperty.call(u1, "compareTerm")) {
-      return (u1 as Node).compareTerm(u2 as Node)
+    if (Object.prototype.hasOwnProperty.call(u1, 'compareTerm')) {
+      return (u1 as RdfLibTerm).compareTerm(u2 as RdfLibTerm)
     }
     if (ClassOrder[u1.termType] < ClassOrder[u2.termType]) {
       return -1
@@ -600,7 +602,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param target node to copy to
    * @param flags Whether or not to do a two-directional copy and/or delete triples
    */
-  copyTo(
+  copyTo (
     template: Quad_Subject,
     target: Quad_Subject,
     flags?: Array<('two-direction' | 'delete')>
@@ -635,7 +637,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param u1in The first node
    * @param u2in The second node
    */
-  equate(u1in: Term, u2in : Term): boolean {
+  equate (u1in: Term, u2in: Term): boolean {
     // log.warn("Equating "+u1+" and "+u2); // @@
     // @@JAMBO Must canonicalize the uris to prevent errors from a=b=c
     // 03-21-2010
@@ -659,9 +661,8 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * Only applicable for IndexedFormula, but TypeScript won't allow a subclass to override a property
    * @param features The list of features
    */
-  //@ts-ignore Incompatible signature with Formula.formula
-  formula(features: FeaturesType): IndexedFormula {
-    return new IndexedFormula(features)
+  formula<IndexedFormula> (features: FeaturesType): IndexedFormula {
+    return new IndexedFormula(features) as unknown as IndexedFormula
   }
 
   /**
@@ -687,39 +688,34 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param object The object
    * @param graph The graph that contains the statement
    */
-  match(
+  match (
     subject?: Quad_Subject | null,
     predicate?: Quad_Predicate | null,
     object?: Quad_Object | null,
     graph?: Quad_Graph | null
-  ): Quad[] {
-    return this.statementsMatching(
-      Node.fromValue(subject),
-      Node.fromValue(predicate),
-      Node.fromValue(object),
-      Node.fromValue(graph)
-    )
+  ): RdfLibQuad[] {
+    return this.statementsMatching(subject, predicate, object, graph)
   }
 
   /**
    * Find out whether a given URI is used as symbol in the formula
    * @param uri The URI to look for
    */
-  mentionsURI(uri: string): boolean {
+  mentionsURI (uri: string): boolean {
     var hash = '<' + uri + '>'
     return (!!this.subjectIndex[hash] ||
-    !!this.objectIndex[hash] ||
-    !!this.predicateIndex[hash])
+      !!this.objectIndex[hash] ||
+      !!this.predicateIndex[hash])
   }
 
   /**
    * Existentials are BNodes - something exists without naming
    * @param uri An URI
    */
-  newExistential(uri: string): Term {
+  newExistential (uri: string): RdfLibTerm {
     if (!uri) return this.bnode()
     var x = this.sym(uri)
-    // @ts-ignore x should be blanknode, but is namedNode.
+    // @ts-ignore x should be blanknode, but is namedNode
     return this.declareExistential(x)
   }
 
@@ -728,7 +724,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param pred the predicate that the function should be triggered on
    * @param action the function that should trigger
    */
-  newPropertyAction(
+  newPropertyAction (
     pred: Quad_Predicate,
     action: (
       store: IndexedFormula,
@@ -757,7 +753,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * Universals are Variables
    * @param uri An URI
    */
-  newUniversal(uri: string): TFNamedNode {
+  newUniversal (uri: string): RdfLibNamedNode {
     var x = this.sym(uri)
     if (!this._universalVariables) this._universalVariables = []
     this._universalVariables.push(x)
@@ -766,8 +762,8 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
 
   // convenience function used by N3 parser
   // @ts-ignore does not correctly extends from Formula
-  variable (name: string) {
-    return new Variable(name)
+  variable (name: string): RdfLibVariable {
+    return new RdfLibVariable(name)
   }
 
   /**
@@ -775,8 +771,8 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * (Note: Slow iff a lot of them -- could be O(log(k)) )
    * @param doc A document named node
    */
-  nextSymbol(doc: TFNamedNode): TFNamedNode {
-    for (var i = 0; ;i++) {
+  nextSymbol (doc: TFNamedNode): RdfLibNamedNode {
+    for (var i = 0; ; i++) {
       var uri = doc.value + '#n' + i
       if (!this.mentionsURI(uri)) return this.sym(uri)
     }
@@ -790,7 +786,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param dummy OBSOLETE - do not use this
    * @param onDone OBSOLETE - do not use this
    */
-  query(
+  query (
     myQuery: Query,
     callback: (bindings: Bindings) => void,
     dummy?: Fetcher | null,
@@ -804,14 +800,17 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    *
    * @param myQuery The query to be run
    */
-  querySync(myQuery: Query): any[] {
+  querySync (myQuery: Query): any[] {
     var results: Bindings[] = []
+
     function saveBinginds (bindings: Bindings) {
       results.push(bindings)
     }
+
     function onDone () {
       done = true
     }
+
     var done = false
     // @ts-ignore TODO: Add .sync to Query
     myQuery.sync = true
@@ -827,7 +826,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * Removes one or multiple statement(s) from this formula
    * @param st - A Statement or array of Statements to remove
    */
-  remove(st: Quad | Quad[]): IndexedFormula {
+  remove (st: Quad | Quad[]): IndexedFormula {
     if (st instanceof Array) {
       for (var i = 0; i < st.length; i++) {
         this.remove(st[i])
@@ -849,7 +848,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * Removes all statemnts in a doc
    * @param doc - The document / graph
    */
-  removeDocument(doc: Quad_Graph): IndexedFormula {
+  removeDocument (doc: Quad_Graph): IndexedFormula {
     var sts: Quad[] = this.statementsMatching(undefined, undefined, undefined, doc).slice() // Take a copy as this is the actual index
     for (var i = 0; i < sts.length; i++) {
       this.removeStatement(sts[i])
@@ -865,7 +864,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param why The graph that contains the statement
    * @param limit The number of statements to remove
    */
-  removeMany(
+  removeMany (
     subj?: Quad_Subject | null,
     pred?: Quad_Predicate | null,
     obj?: Quad_Object | null,
@@ -891,7 +890,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param object The object
    * @param graph The graph that contains the statement
    */
-  removeMatches(
+  removeMatches (
     subject?: Quad_Subject | null,
     predicate?: Quad_Predicate | null,
     object?: Quad_Object | null,
@@ -910,9 +909,9 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    *        Make sure you only use this for these.
    *        Otherwise, you should use remove() above.
    */
-  removeStatement(st: Quad): IndexedFormula {
+  removeStatement (st: Quad): IndexedFormula {
     // log.debug("entering remove w/ st=" + st)
-    var term = [ st.subject, st.predicate, st.object, st.graph ]
+    var term = [st.subject, st.predicate, st.object, st.graph]
     for (var p = 0; p < 4; p++) {
       var c = this.canon(term[p])
       var h = this.id(c)
@@ -930,7 +929,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * Removes statements
    * @param sts The statements to remove
    */
-  removeStatements(sts: ReadonlyArray<Quad>): IndexedFormula {
+  removeStatements (sts: ReadonlyArray<Quad>): IndexedFormula {
     for (var i = 0; i < sts.length; i++) {
       this.remove(sts[i])
     }
@@ -990,7 +989,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * Return all equivalent URIs by which this is known
    * @param x A named node
    */
-  allAliases(x: NamedNode): NamedNode[] {
+  allAliases (x: TFNamedNode): RdfLibNamedNode[] {
     var a = this.aliases[this.id(this.canon(x))] || []
     a.push(this.canon(x))
     return a
@@ -1001,7 +1000,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @param x A named node
    * @param y Another named node
    */
-  sameThings(x: NamedNode, y: NamedNode): boolean {
+  sameThings (x: TFNamedNode, y: TFNamedNode): boolean {
     if (x.equals(y)) {
       return true
     }
@@ -1043,17 +1042,17 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
     obj?: Quad_Object | null,
     why?: Quad_Graph | null,
     justOne?: boolean
-  ): Quad[] {
+  ): RdfLibQuad[] {
     // log.debug("Matching {"+subj+" "+pred+" "+obj+"}")
-    var pat = [ subj, pred, obj, why ]
-    var pattern: Term[] = []
+    var pat = [subj, pred, obj, why]
+    var pattern: Array<RdfLibTerm | undefined> = []
     var hash: Indexable[] = []
     var wild: number[] = [] // wildcards
     var given: number[] = [] // Not wild
     var p: number
     var list
     for (p = 0; p < 4; p++) {
-      pattern[p] = this.canon(Node.fromValue(pat[p]))
+      pattern[p] = this.canon(pat[p])
       if (!pattern[p]) {
         wild.push(p)
       } else {
@@ -1094,16 +1093,17 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
     }
     // Ok, we have picked the shortest index but now we have to filter it
     var pBest = given[iBest]
-    var possibles: Quad[] = this.index[pBest][hash[pBest]]
+    var possibles: RdfLibQuad[] = this.index[pBest][hash[pBest]]
     var check = given.slice(0, iBest).concat(given.slice(iBest + 1)) // remove iBest
-    var results: Quad[] = []
-    var parts = [ 'subject', 'predicate', 'object', 'why' ]
+    var results: RdfLibQuad[] = []
+    var parts = ['subject', 'predicate', 'object', 'why']
     for (var j = 0; j < possibles.length; j++) {
-      var st: Quad | null = possibles[j]
+      var st: RdfLibQuad | null = possibles[j]
 
       for (i = 0; i < check.length; i++) { // for each position to be checked
         p = check[i]
-        if (!this.canon(st[parts[p]]).equals(pattern[p])) {
+        const item = this.canon(st[parts[p]])
+        if (item && pattern[p] && !item.equals(pattern[p]!)) {
           st = null
           break
         }
@@ -1120,11 +1120,11 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * A list of all the URIs by which this thing is known
    * @param term
    */
-  uris(term: Quad_Subject): string[] {
+  uris (term: Quad_Subject): string[] {
     var cterm = this.canon(term)
     var terms = this.aliases[this.id(cterm)]
-    if (!cterm.value) return []
-    var res = [ cterm.value ]
+    if (!cterm || cterm && !cterm.value) return []
+    var res = [cterm.value]
     if (terms) {
       for (var i = 0; i < terms.length; i++) {
         res.push(terms[i].uri)
@@ -1133,4 +1133,5 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
     return res
   }
 }
+
 IndexedFormula.handleRDFType = handleRDFType

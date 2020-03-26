@@ -1,11 +1,11 @@
-import Node from './node-internal'
+import RdfLibTerm from './node-internal'
 import { EmptyTermType } from './types'
 import { Term } from './tf-types'
 
 /**
 * An empty node
 */
-export default class Empty extends Node implements Term {
+export default class Empty extends RdfLibTerm implements Term {
   termType: typeof EmptyTermType = EmptyTermType
 
   constructor () {

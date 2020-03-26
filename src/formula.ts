@@ -4,22 +4,22 @@ import CanonicalDataFactory from './factories/canonical-data-factory'
 import log from './log'
 import RDFlibNamedNode from './named-node'
 import Namespace from './namespace'
-import Node from './node-internal'
+import RdfLibTerm from './node-internal'
 import Serializer from './serialize'
-import Statement from './statement'
+import RdfLibQuad from './statement'
 import {
   Bindings,
   GraphTermType,
 } from './types'
 import { isStatement } from './utils/terms'
-import Variable from './variable'
+import RdfLibVariable from './variable'
+import RdfLibBlankNode from './blank-node'
 import {
   Indexable,
   TFIDFactoryTypes,
 } from './factories/factory-types'
 import { appliedFactoryMethods, arrayToStatements } from './utils'
 import {
-  BlankNode,
   RdfJsDataFactory,
   Quad_Graph,
   Quad_Object,
@@ -27,7 +27,6 @@ import {
   Quad,
   Quad_Subject,
   Term,
-  NamedNode,
 } from './tf-types'
 import Fetcher from './fetcher'
 
@@ -52,13 +51,10 @@ interface UriMap {
 /**
  * A formula, or store of RDF statements
  */
-export default class Formula extends Node {
+export default class Formula extends RdfLibTerm {
   termType: typeof GraphTermType = GraphTermType
 
   classOrder = ClassOrder.Graph
-
-  /** The additional constraints */
-  constraints: ReadonlyArray<any>;
 
   /**
    * The accompanying fetcher instance.
@@ -66,8 +62,6 @@ export default class Formula extends Node {
    * Is set by the fetcher when initialized.
    */
   fetcher?: Fetcher
-
-  initBindings: ReadonlyArray<any>
 
   isVar = 0
 
@@ -77,13 +71,11 @@ export default class Formula extends Node {
    */
   ns = Namespace
 
-  optional: ReadonlyArray<any>
-
   /** The factory used to generate statements and terms */
   rdfFactory: any
 
   /** The stored statements */
-  statements: Quad[];
+  statements: RdfLibQuad[];
 
   /**
    * Initializes this formula
@@ -96,17 +88,15 @@ export default class Formula extends Node {
    * @param opts.rdfFactory - The rdf factory that should be used by the store
 */
   constructor (
-    statements?: Quad[],
-    constraints?: ReadonlyArray<any>,
-    initBindings?: ReadonlyArray<any>,
-    optional?: ReadonlyArray<any>,
+    statements: Quad[] = [],
+    /** The additional constraints */
+    public constraints: ReadonlyArray<any> = [],
+    public initBindings: ReadonlyArray<any> = [],
+    public optional: ReadonlyArray<any> = [],
     opts: FormulaOpts = {}
     ) {
     super('')
-    this.statements = statements || []
-    this.constraints = constraints || []
-    this.initBindings = initBindings || []
-    this.optional = optional || []
+    this.statements = statements.map(st => RdfLibQuad.fromRDFJS(st)) || []
 
     this.rdfFactory = (opts && opts.rdfFactory) || CanonicalDataFactory
     // Enable default factory methods on this while preserving factory context.
@@ -122,7 +112,7 @@ export default class Formula extends Node {
    * @param graph - the last part of the statement
    */
   add (
-    subject: Quad_Subject,
+    subject: Quad_Subject | Quad | Quad[],
     predicate: Quad_Predicate,
     object: Quad_Object,
     graph?: Quad_Graph
@@ -135,11 +125,11 @@ export default class Formula extends Node {
    * @param {Statement} statement - An existing constructed statement to add
    */
   addStatement (statement: Quad): number {
-    return this.statements.push(statement)
+    return this.statements.push(RdfLibQuad.fromRDFJS(statement))
   }
 
   /** @deprecated use {this.rdfFactory.blankNode} instead */
-  bnode (id?: string): BlankNode {
+  bnode (id?: string): RdfLibBlankNode {
     return this.rdfFactory.blankNode(id)
   }
 
@@ -170,7 +160,7 @@ export default class Formula extends Node {
     p?: Quad_Predicate | null,
     o?: Quad_Object | null,
     g?: Quad_Graph | null
-  ): Term | null {
+  ): RdfLibTerm | null {
     const st = this.anyStatementMatching(s, p, o, g)
     if (st == null) {
       return null
@@ -216,7 +206,7 @@ export default class Formula extends Node {
     g?: Quad_Graph | null
   ): any {
     const y = this.any(s, p, o, g)
-    return y ? Node.toJS(y) : void 0
+    return y ? RdfLibTerm.toJS(y) : void 0
   }
 
   /**
@@ -227,7 +217,7 @@ export default class Formula extends Node {
     p?: Quad_Predicate | null,
     o?: Quad_Object | null,
     g?: Quad_Graph | null
-  ): Quad | undefined {
+  ): RdfLibQuad | undefined {
     let x = this.statementsMatching(s, p, o, g, true)
     if (!x || x.length === 0) {
       return undefined
@@ -262,7 +252,7 @@ export default class Formula extends Node {
     o?: Quad_Object | null,
     g?: Quad_Graph | null,
     justOne?: boolean
-  ): Quad[] {
+  ): RdfLibQuad[] {
     const sts = this.statements.filter(st =>
       (!s || s.equals(st.subject)) &&
       (!p || p.equals(st.predicate)) &&
@@ -341,8 +331,8 @@ export default class Formula extends Node {
     p?: Quad_Predicate | null,
     o?: Quad_Object | null,
     g?: Quad_Graph | null
-  ): Term[] {
-    const results: Term[] = []
+  ): RdfLibTerm[] {
+    const results: RdfLibTerm[] = []
     let sts = this.statementsMatching(s, p, o, g, false)
     if (s == null) {
       for (let i = 0, len = sts.length; i < len; i++) {
@@ -449,7 +439,7 @@ export default class Formula extends Node {
    * Get all the Classes of which we can RDFS-infer the subject is a member
    * @param subject - A named node
    */
-  findMemberURIs(subject: Node): UriMap {
+  findMemberURIs(subject: Term): UriMap {
     return this.NTtoURI(this.findMembersNT(subject))
   }
 
@@ -460,9 +450,10 @@ export default class Formula extends Node {
    * Does NOT return terms, returns URI strings.
    * We use NT representations in this version because they handle blank nodes.
    */
-  findSubClassesNT(subject: Node): { [uri: string]: boolean } {
+  findSubClassesNT(subject: Term): { [uri: string]: boolean } {
     let types = {}
-    types[subject.toNT()] = true
+    const rdfLibSubject = RdfLibTerm.fromRDFJS(subject)
+    types[rdfLibSubject.toNT()] = true
     return this.transitiveClosure(
       types,
       this.rdfFactory.namedNode('http://www.w3.org/2000/01/rdf-schema#subClassOf'),
@@ -478,9 +469,10 @@ export default class Formula extends Node {
    * Does NOT return terms, returns URI strings.
    * We use NT representations in this version because they handle blank nodes.
    */
-  findSuperClassesNT(subject: Node): { [uri: string]: boolean } {
+  findSuperClassesNT(subject: Term): { [uri: string]: boolean } {
     let types = {}
-    types[subject.toNT()] = true
+    const rdfLibSubject = RdfLibTerm.fromRDFJS(subject)
+    types[rdfLibSubject.toNT()] = true
     return this.transitiveClosure(types,
       this.rdfFactory.namedNode('http://www.w3.org/2000/01/rdf-schema#subClassOf'), false)
   }
@@ -583,7 +575,7 @@ export default class Formula extends Node {
         .concat(self.statementsMatching(x, null, null, doc))
       sts = sts.filter(function (st): boolean {
         if (excludePredicateURIs![st.predicate.value]) return false
-        let hash = (st as Statement).toNT()
+        let hash = st.toNT()
         if (doneArcs[hash]) return false
         doneArcs[hash] = true
         return true
@@ -607,8 +599,8 @@ export default class Formula extends Node {
    *
    * @param _features - Not applicable, but necessary for typing to pass
    */
-  formula(_features?: ReadonlyArray<string>): Formula {
-    return new Formula()
+  formula<Formula>(_features?: ReadonlyArray<string>): Formula {
+    return new Formula() as unknown as Formula
   }
 
   /**
@@ -643,7 +635,7 @@ export default class Formula extends Node {
       case '_':
         return this.rdfFactory.blankNode(str.slice(2))
       case '?':
-        return new Variable(str.slice(1))
+        return new RdfLibVariable(str.slice(1))
     }
     throw new Error("Can't convert from NT: " + str)
   }
@@ -763,22 +755,21 @@ export default class Formula extends Node {
    * Creates a new formula with the substituting bindings applied
    * @param bindings - The bindings to substitute
    */
-  //@ts-ignore signature not compatible with Node
-  substitute(bindings: Bindings): Formula {
+  substitute<Formula>(bindings: Bindings): Formula {
     let statementsCopy = this.statements.map(function (ea) {
-      return (ea as Statement).substitute(bindings)
+      return ea.substitute(bindings)
     })
     console.log('Formula subs statmnts:' + statementsCopy)
     const y = new Formula()
     y.addAll(statementsCopy as Quad[])
     console.log('indexed-form subs formula:' + y)
-    return y
+    return y as unknown as Formula
   }
 
   /**
    * @deprecated use {rdfFactory.namedNode} instead
    */
-  sym (uri: string, name?): NamedNode {
+  sym (uri: string, name?): RDFlibNamedNode {
     if (name) {
       throw new Error('This feature (kb.sym with 2 args) is removed. Do not assume prefix mappings.')
     }
@@ -797,7 +788,7 @@ export default class Formula extends Node {
     p?: Quad_Predicate | null,
     o?: Quad_Object | null,
     g?: Quad_Graph | null
-  ): Term | null | undefined {
+  ): RdfLibTerm | null | undefined {
     let x = this.any(s, p, o, g)
     if (x == null) {
       log.error('No value found for the() {' + s + ' ' + p + ' ' + o + '}.')
@@ -913,8 +904,8 @@ export default class Formula extends Node {
    * Gets a new variable
    * @param name - The variable's name
    */
-  public variable(name: string): Variable {
-    return new Variable(name)
+  public variable(name: string): RdfLibVariable {
+    return new RdfLibVariable(name)
   }
 
   /**

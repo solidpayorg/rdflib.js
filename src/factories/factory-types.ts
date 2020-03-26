@@ -24,7 +24,7 @@ export type Namespace = (term:string) => TFNamedNode
 /** A set of features that may be supported by a Data Factory */
 export type SupportTable = Record<Feature, boolean>
 
-export type TFIDFactoryTypes = TFNamedNode | TFBlankNode | TFLiteral | Quad | TFVariable | Term
+export type TFIDFactoryTypes = TFNamedNode | TFBlankNode | TFLiteral | Quad | TFVariable | Term | undefined
 
 export enum Feature {
   /** Whether the factory supports termType:Collection terms */
