@@ -13,18 +13,12 @@ import { join as uriJoin } from './uri'
 import { isStore, isBlankNode } from './utils/terms'
 import * as Util from './utils-js'
 import Statement from './statement'
-import RDFlibNamedNode from './named-node'
+import NamedNode from './named-node'
 import { termValue } from './utils/termValue'
-import {
-  BlankNode,
-  NamedNode,
-  Quad_Graph,
-  Quad_Object,
-  Quad_Predicate,
-  Quad_Subject,
-  Quad,
-  Term,
-} from './tf-types'
+import { GraphType, ObjectType, PredicateType, SubjectType } from './types'
+import BlankNode from './blank-node'
+import Term from './node-internal'
+import { namedNode } from './index'
 
 interface UpdateManagerFormula extends IndexedFormula {
   fetcher: Fetcher
@@ -107,9 +101,9 @@ export default class UpdateManager {
 
     if ((uri as string).slice(0, 8) === 'file:///') {
       if (kb.holds(
-          this.store.rdfFactory.namedNode(uri),
-          this.store.rdfFactory.namedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'),
-          this.store.rdfFactory.namedNode('http://www.w3.org/2007/ont/link#MachineEditableDocument'))) {
+          namedNode(uri),
+          namedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'),
+          namedNode('http://www.w3.org/2007/ont/link#MachineEditableDocument'))) {
         return 'LOCALFILE'
       }
 
@@ -137,14 +131,14 @@ export default class UpdateManager {
     // https://github.com/solid/node-solid-server/pull/1313
     // Once that release has been published to the major Pod hosters, the commit that introduced
     // this statement should be reverted:
-    if (kb.holds(this.store.rdfFactory.namedNode(uri), this.ns.rdf('type'), this.ns.ldp('Resource'))) {
+    if (kb.holds(namedNode(uri), this.ns.rdf('type'), this.ns.ldp('Resource'))) {
         return 'SPARQL'
     }
     var method: string
     for (var r = 0; r < requests.length; r++) {
       request = requests[r]
       if (request !== undefined) {
-        var response = kb.any(request, this.ns.link('response')) as Quad_Subject
+        var response = kb.any(request, this.ns.link('response')) as SubjectType
         if (request !== undefined) {
           var wacAllow = kb.anyValue(response, this.ns.httph('wac-allow'))
           if (wacAllow) {
@@ -207,7 +201,7 @@ export default class UpdateManager {
       : obj.toNT()
   }
 
-  anonymizeNT (stmt: Quad) {
+  anonymizeNT (stmt: Statement) {
     return this.anonymize(stmt.subject) + ' ' +
       this.anonymize(stmt.predicate) + ' ' +
       this.anonymize(stmt.object) + ' .'
@@ -217,7 +211,7 @@ export default class UpdateManager {
    * Returns a list of all bnodes occurring in a statement
    * @private
    */
-  statementBnodes (st: Quad): BlankNode[] {
+  statementBnodes (st: Statement): BlankNode[] {
     return [st.subject, st.predicate, st.object].filter(function (x) {
       return isBlankNode(x)
     }) as BlankNode[]
@@ -227,7 +221,7 @@ export default class UpdateManager {
    * Returns a list of all bnodes occurring in a list of statements
    * @private
    */
-  statementArrayBnodes (sts: Quad[]) {
+  statementArrayBnodes (sts: Statement[]) {
     var bnodes: BlankNode[] = []
     for (let i = 0; i < sts.length; i++) {
       bnodes = bnodes.concat(this.statementBnodes(sts[i]))
@@ -349,7 +343,7 @@ export default class UpdateManager {
    * Returns the best context for a single statement
    * @private
    */
-  statementContext (st: Quad) {
+  statementContext (st: Statement) {
     var bnodes = this.statementBnodes(st)
     return this.bnodeContext(bnodes, st.graph)
   }
@@ -416,7 +410,7 @@ export default class UpdateManager {
    * It returns an object which includes
    *  function which can be used to change the object of the statement.
    */
-  update_statement (statement: Quad) {
+  update_statement (statement: Statement) {
     if (statement && !statement.graph) {
       return
     }
@@ -439,12 +433,12 @@ export default class UpdateManager {
           // @ts-ignore
           this.anonymize(obj) + ' ' + ' . }\n'
 
-        updater.fire((this.statement as [Quad_Subject, Quad_Predicate, Quad_Object, Quad_Graph])[3].value, query, callbackFunction)
+        updater.fire((this.statement as [SubjectType, PredicateType, ObjectType, GraphType])[3].value, query, callbackFunction)
       }
     }
   }
 
-  insert_statement (st: Quad, callbackFunction: CallBackFunction): void {
+  insert_statement (st: Statement, callbackFunction: CallBackFunction): void {
     var st0 = st instanceof Array ? st[0] : st
     var query = this.contextWhere(this.statementContext(st0))
 
@@ -462,7 +456,7 @@ export default class UpdateManager {
     this.fire(st0.graph.value, query, callbackFunction)
   }
 
-  delete_statement (st: Quad | Quad[], callbackFunction: CallBackFunction): void {
+  delete_statement (st: Statement | Statement[], callbackFunction: CallBackFunction): void {
     var st0 = st instanceof Array ? st[0] : st
     var query = this.contextWhere(this.statementContext(st0))
 
@@ -744,7 +738,7 @@ export default class UpdateManager {
       var verbs = ['insert', 'delete']
       var clauses = { 'delete': ds, 'insert': is }
       verbs.map(function (verb) {
-        clauses[verb].map(function (st: Quad) {
+        clauses[verb].map(function (st: Statement) {
           if (!doc.equals(st.graph)) {
             throw new Error('update: destination ' + doc +
               ' inconsistent with delete quad ' + st.graph)
@@ -869,7 +863,7 @@ export default class UpdateManager {
   }
 
   updateDav (
-    doc: Quad_Subject,
+    doc: SubjectType,
     ds,
     is,
     callbackFunction
@@ -881,14 +875,14 @@ export default class UpdateManager {
       throw new Error('No record of our HTTP GET request for document: ' +
         doc)
     } // should not happen
-    var response = kb.any(request as NamedNode, this.ns.link('response')) as Quad_Subject
+    var response = kb.any(request as NamedNode, this.ns.link('response')) as SubjectType
     if (!response) {
       return null // throw "No record HTTP GET response for document: "+doc
     }
-    var contentType = (kb.the(response, this.ns.httph('content-type'))as Term).value
+    var contentType = (kb.the(response, this.ns.httph('content-type')) as Term).value
 
     // prepare contents of revised document
-    let newSts = kb.statementsMatching(undefined, undefined, undefined, doc).slice() // copy!
+    let newSts = kb.statementsMatching(undefined, undefined, undefined, doc as NamedNode).slice() // copy!
     for (let i = 0; i < ds.length; i++) {
       Util.RDFArrayRemove(newSts, ds[i])
     }
@@ -921,7 +915,7 @@ export default class UpdateManager {
           kb.remove(ds[i])
         }
         for (let i = 0; i < is.length; i++) {
-          kb.add(is[i].subject, is[i].predicate, is[i].object, doc)
+          kb.add(is[i].subject, is[i].predicate, is[i].object, doc as NamedNode)
         }
 
         callbackFunction(doc.value, response.ok, response.responseText, response)
@@ -1011,7 +1005,7 @@ export default class UpdateManager {
    *
    * @returns {string}
    */
-  serialize (uri: string, data: string | Quad[], contentType: string): string {
+  serialize (uri: string, data: string | Statement[], contentType: string): string {
     const kb = this.store
     let documentString
 
@@ -1046,8 +1040,8 @@ export default class UpdateManager {
    * This is suitable for an initial creation of a document.
    */
   put(
-    doc: RDFlibNamedNode,
-    data: string | Quad[],
+    doc: NamedNode,
+    data: string | Statement[],
     contentType: string,
     callback: (uri: string, ok: boolean, errorMessage?: string, response?: unknown) => void,
   ): Promise<void> {
@@ -1091,7 +1085,7 @@ export default class UpdateManager {
    * document in the meantime.
    *
    * @param kb
-   * @param doc {RDFlibNamedNode}
+   * @param doc {NamedNode}
    * @param callbackFunction
    */
   reload (

@@ -14,7 +14,8 @@ import {
   TurtleLegacyContentType,
 } from './types'
 import IndexedFormula from './store'
-import { BlankNode, NamedNode } from './tf-types'
+import NamedNode from './named-node'
+import BlankNode from './blank-node'
 
 /**
  * Serialize to the appropriate format

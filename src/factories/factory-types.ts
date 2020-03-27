@@ -3,28 +3,20 @@ import Statement from '../statement'
 import NamedNode from '../named-node'
 import BlankNode from '../blank-node'
 import Variable from '../variable'
-import {
-  BlankNode as TFBlankNode,
-  RdfJsDataFactory,
-  Literal as TFLiteral,
-  NamedNode as TFNamedNode,
-  Quad,
-  Term,
-  Variable as TFVariable,
-} from '../tf-types'
+import Term from '../node-internal'
 
-export type Comparable = Term | TFNamedNode | TFBlankNode | TFLiteral | Quad | undefined | null
+export type Comparable = Term | NamedNode | BlankNode | Literal | Statement | undefined | null
 
 export type DefaultFactoryTypes = NamedNode | BlankNode | Literal | Variable | Statement
 
 export type Indexable = number | string
 
-export type Namespace = (term:string) => TFNamedNode
+export type Namespace = (term:string) => NamedNode
 
 /** A set of features that may be supported by a Data Factory */
 export type SupportTable = Record<Feature, boolean>
 
-export type TFIDFactoryTypes = TFNamedNode | TFBlankNode | TFLiteral | Quad | TFVariable | Term
+export type TFIDFactoryTypes = NamedNode | BlankNode | Literal | Statement | Variable | Term
 
 export enum Feature {
   /** Whether the factory supports termType:Collection terms */
@@ -55,7 +47,7 @@ export enum Feature {
 export interface DataFactory<
   FactoryTypes = DefaultFactoryTypes,
   IndexType = Indexable
-> extends RdfJsDataFactory {
+> {
   /**
    * BlankNode index
    * @private
@@ -64,7 +56,7 @@ export interface DataFactory<
 
   supports: SupportTable
 
-  literal(value: string, languageOrDatatype?: string | TFNamedNode): Literal
+  literal(value: string, languageOrDatatype?: string | NamedNode): Literal
 
   isQuad(obj: any): obj is Statement
 
@@ -79,7 +71,7 @@ export interface DataFactory<
     graph?: Term,
   ): Statement;
 
-  quadToNQ(term: Statement | Quad): string
+  quadToNQ(term: Statement): string
 
   termToNQ(term: Term): string
 

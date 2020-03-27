@@ -1,15 +1,16 @@
 import {
-  IRDFlibDataFactory,
+  GraphType,
+  IRDFLIBDataFactory, ObjectType, PredicateType, SubjectType
 } from '../types'
 import Literal from '../literal'
 import Statement from '../statement'
 import IndexedFormula from '../store'
 import Fetcher from '../fetcher'
 import ExtendedTermFactory from './extended-term-factory'
-import { NamedNode, Quad_Subject, Quad_Predicate, Quad_Object, Quad_Graph } from '../tf-types'
+import NamedNode from '../named-node'
 
 /** Full RDFLib.js Data Factory */
-const RDFlibDataFactory: IRDFlibDataFactory = {
+const RDFLIBDataFactory: IRDFLIBDataFactory = {
   ...ExtendedTermFactory,
 
   /**
@@ -48,10 +49,10 @@ const RDFlibDataFactory: IRDFlibDataFactory = {
    * @deprecated use [[quad]] instead
    */
   st (
-    subject: Quad_Subject,
-    predicate: Quad_Predicate,
-    object: Quad_Object,
-    graph?: Quad_Graph
+    subject: SubjectType,
+    predicate: PredicateType,
+    object: ObjectType,
+    graph?: GraphType
   ): Statement {
     return this.quad(subject, predicate, object, graph)
   },
@@ -64,12 +65,12 @@ const RDFlibDataFactory: IRDFlibDataFactory = {
    * @deprecated use [[quad]] without the last argument instead
    */
   triple (
-    subject: Quad_Subject,
-    predicate: Quad_Predicate,
-    object: Quad_Object
+    subject: SubjectType,
+    predicate: PredicateType,
+    object: ObjectType
   ): Statement {
     return this.quad(subject, predicate, object)
   },
 }
 
-export default RDFlibDataFactory
+export default RDFLIBDataFactory

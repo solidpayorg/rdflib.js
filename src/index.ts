@@ -1,4 +1,4 @@
-import { IRDFlibDataFactory } from './types'
+import { IRDFLIBDataFactory } from './types'
 
 import BlankNode from './blank-node'
 import Collection from './collection'
@@ -33,7 +33,7 @@ import Variable from './variable'
 import DataFactory from './factories/rdflib-data-factory'
 
 // Prepare bound versions of data factory methods for export
-const boundDataFactory = {} as IRDFlibDataFactory
+const boundDataFactory = {} as IRDFLIBDataFactory
 for (const name in DataFactory) {
   if (typeof DataFactory[name] === 'function')
     boundDataFactory[name] = DataFactory[name].bind(DataFactory);

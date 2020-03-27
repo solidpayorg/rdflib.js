@@ -252,11 +252,7 @@ describe('util', () => {
   describe('arrayToStatements', () => {
     it('converts an array to statements', () => {
       const first = CanonicalDataFactory.blankNode()
-      const statements = arrayToStatements(
-        CanonicalDataFactory,
-        first,
-        ["a", "b", "c"].map((d) => CanonicalDataFactory.literal(d))
-      )
+      const statements = arrayToStatements(first, ['a', 'b', 'c'].map((d) => CanonicalDataFactory.literal(d)))
 
       expect(statements).to.have.length(6)
     })

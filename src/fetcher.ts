@@ -43,17 +43,11 @@ import { fetch as solidAuthCli } from 'solid-auth-cli'
 // @ts-ignore This is injected
 import { fetch as solidAuthClient } from 'solid-auth-client'
 import {
-  ContentType, TurtleContentType, RDFXMLContentType, XHTMLContentType
+  ContentType, TurtleContentType, RDFXMLContentType, XHTMLContentType, SubjectType, PredicateType
 } from './types'
 import { termValue } from './utils/termValue'
-import {
-  BlankNode,
-  RdfJsDataFactory,
-  Quad_Graph,
-  NamedNode,
-  Quad_Predicate,
-  Quad_Subject
-} from './tf-types'
+import NamedNode from './named-node'
+import BlankNode from './blank-node'
 
 // This is a special fetch which does OIDC auth, catching 401 errors
 const fetch = typeof window === 'undefined' ? solidAuthCli : solidAuthClient
@@ -84,15 +78,15 @@ const CONTENT_TYPE_BY_EXT = {
 // make its own list and not rely on the prefixes used here,
 // and not be tempted to add to them, and them clash with those of another
 // application.
-const getNS = (factory?: RdfJsDataFactory) => {
+const getNS = () => {
   return {
-    link: Namespace('http://www.w3.org/2007/ont/link#', factory),
-    http: Namespace('http://www.w3.org/2007/ont/http#', factory),
-    httph: Namespace('http://www.w3.org/2007/ont/httph#', factory),  // headers
-    rdf: Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#', factory),
-    rdfs: Namespace('http://www.w3.org/2000/01/rdf-schema#', factory),
-    dc: Namespace('http://purl.org/dc/elements/1.1/', factory),
-    ldp: Namespace('http://www.w3.org/ns/ldp#', factory)
+    link: Namespace('http://www.w3.org/2007/ont/link#'),
+    http: Namespace('http://www.w3.org/2007/ont/http#'),
+    httph: Namespace('http://www.w3.org/2007/ont/httph#'),  // headers
+    rdf: Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#'),
+    rdfs: Namespace('http://www.w3.org/2000/01/rdf-schema#'),
+    dc: Namespace('http://purl.org/dc/elements/1.1/'),
+    ldp: Namespace('http://www.w3.org/ns/ldp#')
   }
 }
 const ns = getNS()
@@ -108,7 +102,7 @@ interface ExtendedResponse extends Response {
   /** String representation of the Body */
   responseText?: string
   /** Identifier of the reqest */
-  req?: Quad_Subject
+  req?: SubjectType
   size?: number
   timeout?: number
   /** Used in UpdateManager.updateDav */
@@ -183,7 +177,7 @@ interface AutoInitOptions extends RequestInit{
   retriedWithNoCredentials?: boolean
   requestedURI?: string
   // Seems to be required in some functions, such as XHTML parse and RedirectToProxy
-  resource: Quad_Subject
+  resource: SubjectType
   /** The serialized resource in the body*/
   // Used for storing metadata of requests
   original: NamedNode
@@ -228,8 +222,8 @@ class RDFXMLHandler extends Handler {
     responseText: String,
     /** Requires .original */
     options: {
-      original: Quad_Subject
-      req: Quad_Subject
+      original: SubjectType
+      req: SubjectType
     } & Options,
   ) {
     let kb = fetcher.store
@@ -271,8 +265,8 @@ class XHTMLHandler extends Handler {
     fetcher: Fetcher,
     responseText: string,
     options: {
-      resource: Quad_Subject
-      original: Quad_Subject
+      resource: SubjectType
+      original: SubjectType
     } & Options,
   ): Promise<FetchError> | ExtendedResponse {
     let relation, reverse: boolean
@@ -349,9 +343,9 @@ class XMLHandler extends Handler {
     fetcher: Fetcher,
     responseText: string,
     options: {
-      original: Quad_Subject
+      original: SubjectType
       req: BlankNode
-      resource: Quad_Subject
+      resource: SubjectType
     } & Options,
   ): ExtendedResponse | Promise<FetchError> {
     let dom = Util.parseXML(responseText)
@@ -433,8 +427,8 @@ class HTMLHandler extends Handler {
     responseText: string,
     options: {
       req: BlankNode,
-      resource: Quad_Subject,
-      original: Quad_Subject,
+      resource: SubjectType,
+      original: SubjectType,
     } & Options
   ): Promise<FetchError> | ExtendedResponse {
     let kb = fetcher.store
@@ -497,9 +491,9 @@ class TextHandler extends Handler {
     fetcher: Fetcher,
     responseText: string,
     options: {
-      req: Quad_Subject
-      original: Quad_Subject
-      resource: Quad_Subject
+      req: SubjectType
+      original: SubjectType
+      resource: SubjectType
     } & Options
   ): ExtendedResponse | Promise<FetchError> {
     // We only speak dialects of XML right now. Is this XML?
@@ -555,7 +549,7 @@ class N3Handler extends Handler {
     responseText: string,
     options: {
       original: NamedNode
-      req: Quad_Subject
+      req: SubjectType
     } & Options,
     response: ExtendedResponse
   ): ExtendedResponse | Promise<FetchError> {
@@ -707,7 +701,7 @@ export default class Fetcher implements CallbackifyInterface {
   nonexistent: BooleanMap
   lookedUp: BooleanMap
   handlers: Array<typeof Handler>
-  ns: { [k: string]: (ln: string) => Quad_Predicate }
+  ns: { [k: string]: (ln: string) => PredicateType }
   static HANDLERS: {
     [handlerName: number]: Handler
   }
@@ -720,7 +714,7 @@ export default class Fetcher implements CallbackifyInterface {
 
   constructor (store: IndexedFormula, options: Options = {}) {
     this.store = store || new IndexedFormula()
-    this.ns = getNS(this.store.rdfFactory)
+    this.ns = getNS()
     this.timeout = options.timeout || 30000
 
     this._fetch = options.fetch || fetch
@@ -729,7 +723,7 @@ export default class Fetcher implements CallbackifyInterface {
       throw new Error('No _fetch function availble for Fetcher')
     }
 
-    this.appNode = this.store.rdfFactory.blankNode()
+    this.appNode = new BlankNode()
     this.store.fetcher = this // Bi-linked
     this.requested = {}
     this.timeouts = {}
@@ -1233,7 +1227,7 @@ export default class Fetcher implements CallbackifyInterface {
   failFetch (
     options: {
       req: BlankNode
-      original: Quad_Subject
+      original: SubjectType
     } & Options,
     errorMessage: string,
     statusCode: StatusValues,
@@ -1348,8 +1342,8 @@ export default class Fetcher implements CallbackifyInterface {
 
   doneFetch (
     options: {
-      req: Quad_Subject,
-      original: Quad_Subject
+      req: SubjectType,
+      original: SubjectType
     } & Options,
     response: ExtendedResponse
   ): Response {
@@ -1368,7 +1362,7 @@ export default class Fetcher implements CallbackifyInterface {
    * If only one was flagged as looked up, then the new node is looked up again,
    * which will make sure all the URIs are dereferenced
    */
-  nowKnownAs (was: Quad_Subject, now: Quad_Subject): void {
+  nowKnownAs (was: SubjectType, now: SubjectType): void {
     if (this.lookedUp[was.value]) {
       // Transfer userCallback
       if (!this.lookedUp[now.value]) {
@@ -1570,8 +1564,8 @@ export default class Fetcher implements CallbackifyInterface {
    *   (for tracking bad links)
    */
   lookUpThing (
-    term: Quad_Subject,
-    rterm: Quad_Subject
+    term: SubjectType,
+    rterm: SubjectType
   ): Promise<Response> | Promise<Response>[] {
     let uris = this.store.uris(term)  // Get all URIs
     uris = uris.map(u => Uri.docpart(u))  // Drop hash fragments
@@ -1597,12 +1591,12 @@ export default class Fetcher implements CallbackifyInterface {
     header: string
   ): undefined | string[] {
     const kb = this.store
-    const requests = kb.each(undefined, this.ns.link('requestedURI'), doc) as Quad_Subject[]
+    const requests = kb.each(undefined, this.ns.link('requestedURI'), doc) as SubjectType[]
 
     for (let r = 0; r < requests.length; r++) {
       let request = requests[r]
       if (request !== undefined) {
-        let response = kb.any(request, this.ns.link('response')) as Quad_Subject
+        let response = kb.any(request, this.ns.link('response')) as SubjectType
         if (response !== undefined && kb.anyValue(response, this.ns.http('status')) && (kb.anyValue(response, this.ns.http('status')) as string).startsWith('2')) {
           // Only look at success returns - not 401 error messagess etc
           let results = kb.each(response, this.ns.httph(header.toLowerCase()))
@@ -1651,7 +1645,7 @@ export default class Fetcher implements CallbackifyInterface {
     response: Response,
     options: {
       req: BlankNode,
-      resource: Quad_Subject
+      resource: SubjectType
     } & Options
   ): BlankNode {
     const kb = this.store
@@ -1842,7 +1836,7 @@ export default class Fetcher implements CallbackifyInterface {
   // deduce some things from the HTTP transaction
   addType (
     rdfType: NamedNode,
-    req: Quad_Subject,
+    req: SubjectType,
     kb: IndexedFormula,
     locURI: string
   ): void { // add type to all redirected resources too
@@ -1858,7 +1852,7 @@ export default class Fetcher implements CallbackifyInterface {
       if (doc && doc.value) {
         kb.add(kb.rdfFactory.namedNode(doc.value), this.ns.rdf('type'), rdfType, this.appNode)
       } // convert Literal
-      prev = kb.any(undefined, kb.rdfFactory.namedNode('http://www.w3.org/2007/ont/link#redirectedRequest'), prev) as Quad_Subject
+      prev = kb.any(undefined, kb.rdfFactory.namedNode('http://www.w3.org/2007/ont/link#redirectedRequest'), prev) as SubjectType
       if (!prev) { break }
       var response = kb.any(prev, kb.rdfFactory.namedNode('http://www.w3.org/2007/ont/link#response'))
       if (!response) { break }
@@ -1979,7 +1973,7 @@ export default class Fetcher implements CallbackifyInterface {
 
   saveErrorResponse (
     response: ExtendedResponse,
-    responseNode: Quad_Subject
+    responseNode: SubjectType
   ): Promise<void> {
     let kb = this.store
 
@@ -2072,8 +2066,8 @@ export default class Fetcher implements CallbackifyInterface {
   setRequestTimeout (
     uri: string,
     options: {
-      req: Quad_Subject
-      original: Quad_Subject
+      req: SubjectType
+      original: SubjectType
     } & Options
   ): Promise<number | FetchError> {
     return new Promise((resolve) => {

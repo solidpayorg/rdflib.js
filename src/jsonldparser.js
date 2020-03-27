@@ -47,7 +47,7 @@ function listToStatements (kb, obj) {
   const listId = obj['@id'] ? kb.rdfFactory.namedNode(obj['@id']) : kb.rdfFactory.blankNode()
 
   const items = obj['@list'].map((listItem => jsonldObjectToTerm(kb, listItem)))
-  const statements = arrayToStatements(kb.rdfFactory, listId, items)
+  const statements = arrayToStatements(listId, items)
   kb.addAll(statements)
 
   return listId

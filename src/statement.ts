@@ -8,7 +8,7 @@ import {
   DefaultGraphTermType,
 } from './types'
 import { defaultGraphNode } from './utils/default-graph-uri'
-import { Quad_Graph, Quad_Object, Quad_Predicate, Quad, Quad_Subject, Term } from './tf-types'
+import { Quad } from './tf-types'
 
 /** A Statement represents an RDF Triple or Quad. */
 export default class Statement implements Quad<SubjectType, PredicateType, ObjectType, GraphType> {
@@ -45,10 +45,10 @@ export default class Statement implements Quad<SubjectType, PredicateType, Objec
    *  powerful update() which can update more than one document.
    */
   constructor (
-    subject: Quad_Subject | Term,
-    predicate: Quad_Predicate | Term,
-    object: Quad_Object | Term,
-    graph?: Quad_Graph | Term,
+    subject: SubjectType,
+    predicate: PredicateType,
+    object: ObjectType,
+    graph?: GraphType,
   ) {
     this.subject = Node.fromValue(subject)
     this.predicate = Node.fromValue(predicate)

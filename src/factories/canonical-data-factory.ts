@@ -3,6 +3,7 @@ import Literal from '../literal'
 import NamedNode from '../named-node'
 import Statement from '../statement'
 import Variable from '../variable'
+import Term from '../node-internal'
 import {
   SubjectType,
   PredicateType,
@@ -18,12 +19,10 @@ import {
 import { defaultGraphNode } from '../utils/default-graph-uri'
 import {
   Comparable,
-  DataFactory,
   DefaultFactoryTypes,
   Feature,
 } from './factory-types'
 import { isQuad, isTerm } from '../utils/terms'
-import { NamedNode as TFNamedNode, Quad, Term } from '../tf-types'
 
 export { defaultGraphURI } from '../utils/default-graph-uri'
 
@@ -34,8 +33,9 @@ export function defaultGraph(): NamedNode {
   return defaultGraphNode
 }
 
+// @ts-ignore
 /** A basic internal RDFlib datafactory, which does not support Collections  */
-const CanonicalDataFactory: DataFactory = {
+const CanonicalDataFactory = {
 
   supports: {
     [Feature.collections]: false,
@@ -128,7 +128,7 @@ const CanonicalDataFactory: DataFactory = {
    */
   literal(
     value: string | number | boolean | Date,
-    languageOrDatatype?: string | TFNamedNode
+    languageOrDatatype?: string | NamedNode
   ): Literal {
     if (typeof value !== "string" && !languageOrDatatype) {
       return Literal.fromValue(value)
@@ -162,16 +162,16 @@ const CanonicalDataFactory: DataFactory = {
    * @param graph - The containing graph
    */
   quad(
-    subject: Term | SubjectType,
-    predicate: Term | PredicateType,
-    object: Term | ObjectType,
-    graph?: Term | GraphType
+    subject: SubjectType,
+    predicate: PredicateType,
+    object: ObjectType,
+    graph?: GraphType
   ): Statement {
     graph = graph || defaultGraph()
     return new Statement(subject, predicate, object, graph)
   },
 
-  quadToNQ(q: Statement | Quad): string {
+  quadToNQ(q: Statement): string {
     return `${this.termToNQ(q.subject)} ${this.termToNQ(q.predicate)} ${this.termToNQ(q.object)} ${this.termToNQ(q.graph)} .`;
   },
 

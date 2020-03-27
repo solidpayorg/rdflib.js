@@ -2,7 +2,10 @@ import Fetcher from './fetcher'
 import log from './log'
 import { docpart } from './uri'
 import { string_startswith } from './utils-js'
-import { RdfJsDataFactory, Quad, Quad_Subject, Term } from './tf-types'
+import Statement from './statement'
+import { SubjectType } from './types'
+import Term from './node-internal'
+import { blankNode, namedNode, st } from './index'
 
 /** RDF/JS spec Typeguards */
 
@@ -73,27 +76,25 @@ const rdf = {
 
 /**
  * Expands an array of Terms to a set of statements representing the rdf:list.
- * @param rdfFactory - The factory to use
  * @param subject - The iri of the first list item.
  * @param data - The terms to expand into the list.
  * @return The {data} as a set of statements.
  */
-export function arrayToStatements(
-  rdfFactory: RdfJsDataFactory,
-  subject: Quad_Subject,
+export function arrayToStatements (
+  subject: SubjectType,
   data: Term[]
-): Quad[] {
-  const statements: Quad[] = []
+): Statement[] {
+  const statements: Statement[] = []
 
-  data.reduce<Quad_Subject>((id, _listObj, i, listData) => {
-    statements.push(rdfFactory.quad(id, rdfFactory.namedNode(rdf.first), listData[i]))
+  data.reduce<SubjectType>((id, _listObj, i, listData) => {
+    statements.push(st(id, namedNode(rdf.first), listData[i]))
 
     let nextNode
     if (i < listData.length - 1) {
-      nextNode = rdfFactory.blankNode()
-      statements.push(rdfFactory.quad(id, rdfFactory.namedNode(rdf.rest), nextNode))
+      nextNode = blankNode()
+      statements.push(st(id, namedNode(rdf.rest), nextNode))
     } else {
-      statements.push(rdfFactory.quad(id, rdfFactory.namedNode(rdf.rest), rdfFactory.namedNode(rdf.nil)))
+      statements.push(st(id, namedNode(rdf.rest), namedNode(rdf.nil)))
     }
 
     return nextNode

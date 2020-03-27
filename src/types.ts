@@ -1,16 +1,15 @@
-import Node from './node-internal'
-import RDFlibVariable from './variable'
-import RDFlibBlankNode from './blank-node'
+import RDFLIBTerm from './node-internal'
+import RDFLIBVariable from './variable'
+import RDFLIBBlankNode from './blank-node'
 import Collection from './collection'
-import RDFlibLiteral from './literal'
-import RDFlibNamedNode from './named-node'
-import RDFlibDefaultGraph from './default-graph'
+import RDFLIBLiteral from './literal'
+import RDFLIBNamedNode from './named-node'
+import RDFLIBDefaultGraph from './default-graph'
 import { DataFactory } from './factories/factory-types'
 import IndexedFormula from './store'
 import Fetcher from './fetcher'
 import Statement from './statement'
 import Empty from './empty'
-import { NamedNode, Term, Quad_Subject, Quad_Predicate, Quad_Object, Quad_Graph } from './tf-types'
 
 export const NamedNodeTermType = "NamedNode" as const
 export const BlankNodeTermType = "BlankNode" as const
@@ -60,11 +59,11 @@ export type ContentType = typeof RDFXMLContentType
   | typeof XHTMLContentType
 
 /** A type for values that serves as inputs */
-export type ValueType = Term | Node | Date | string | number | boolean | undefined | null | Collection
+export type ValueType = RDFLIBTerm | Date | string | number | boolean | undefined | null | Collection
 
 /**
  * In this project, there exist two types for the same kind of RDF concept.
- * We have RDF/JS spec types (standardized, generic), and RDFlib types (internal, specific).
+ * We have RDF/JS spec types (standardized, generic), and RDFLIB types (internal, specific).
  * When deciding which type to use in a function, it is preferable to accept generic inputs,
  * whenever possible, and provide strict outputs.
  * In some ways, the TF types in here are a bit more strict.
@@ -72,36 +71,36 @@ export type ValueType = Term | Node | Date | string | number | boolean | undefin
  */
 
 /** An RDF/JS Subject */
-export type SubjectType = RDFlibBlankNode | RDFlibNamedNode | RDFlibVariable
+export type SubjectType = RDFLIBBlankNode | RDFLIBNamedNode | RDFLIBVariable
 /** An RDF/JS Predicate */
-export type PredicateType = RDFlibNamedNode | RDFlibVariable
+export type PredicateType = RDFLIBNamedNode | RDFLIBVariable
 /** An RDF/JS Object */
-export type ObjectType = RDFlibNamedNode | RDFlibLiteral | Collection | RDFlibBlankNode | RDFlibVariable | Empty
+export type ObjectType = RDFLIBNamedNode | RDFLIBLiteral | Collection | RDFLIBBlankNode | RDFLIBVariable | Empty
 /** An RDF/JS Graph */
-export type GraphType = RDFlibDefaultGraph | RDFlibNamedNode | RDFlibVariable // | Formula
+export type GraphType = RDFLIBDefaultGraph | RDFLIBNamedNode | RDFLIBVariable | RDFLIBBlankNode // | Formula
 
 export interface Bindings {
-  [id: string]: Term;
+  [id: string]: RDFLIBTerm;
 }
 
 /** All the types that a .fromValue() method might return */
-export type FromValueReturns<C extends Node = any> = Term | undefined | null | Collection<C>
+export type FromValueReturns<C extends RDFLIBTerm = any> = RDFLIBTerm | undefined | null | Collection<C>
 
-export interface IRDFlibDataFactory extends DataFactory<
-  RDFlibNamedNode | RDFlibBlankNode | RDFlibLiteral | Collection | Statement
+export interface IRDFLIBDataFactory extends DataFactory<
+  RDFLIBNamedNode | RDFLIBBlankNode | RDFLIBLiteral | Collection | Statement
 > {
   fetcher: (store: IndexedFormula, options: any) => Fetcher
-  lit: (val: string, lang?: string, dt?: NamedNode) => RDFlibLiteral
+  lit: (val: string, lang?: string, dt?: RDFLIBNamedNode) => RDFLIBLiteral
   graph: (features?, opts?) => IndexedFormula
   st: (
-    subject: Quad_Subject,
-    predicate: Quad_Predicate,
-    object: Quad_Object,
-    graph?: Quad_Graph
+    subject: SubjectType,
+    predicate: PredicateType,
+    object: ObjectType,
+    graph?: GraphType
   ) => Statement
   triple: (
-    subject: Quad_Subject,
-    predicate: Quad_Predicate,
-    object: Quad_Object
+    subject: SubjectType,
+    predicate: PredicateType,
+    object: ObjectType
   ) => Statement
 }
