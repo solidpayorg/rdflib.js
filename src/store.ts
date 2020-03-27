@@ -35,7 +35,7 @@ import RdfLibVariable from './variable'
 import { Query, indexedFormulaQuery } from './query'
 import UpdateManager from './update-manager'
 import {
-  Bindings
+  Bindings, GraphType, ObjectType, PredicateType, SubjectType
 } from './types'
 import RdfLibQuad from './statement'
 import { Indexable } from './factories/factory-types'
@@ -158,9 +158,9 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
   _existentialVariables?: RdfLibBlankNode[]
 
   /** Function to remove quads from the store arrays with */
-  private rdfArrayRemove: (arr: Quad[], q: Quad) => void
+  private rdfArrayRemove: (arr: RdfLibQuad[], q: RdfLibQuad) => void
   /** Callbacks which are triggered after a statement has been added to the store */
-  private dataCallbacks?: Array<(q: Quad) => void>
+  private dataCallbacks?: Array<(q: RdfLibQuad) => void>
 
   /**
    * Creates a new formula
@@ -227,7 +227,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * Add a callback which will be triggered after a statement has been added to the store.
    * @param cb
    */
-  addDataCallback (cb: (q: Quad) => void): void {
+  addDataCallback (cb: (q: RdfLibQuad) => void): void {
     if (!this.dataCallbacks) {
       this.dataCallbacks = []
     }
@@ -301,7 +301,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
       var query = new Query('patch')
       query.pat = patch.where
       query.pat.statements.map(function (st) {
-        st.graph = RdfLibNamedNode.fromRDFJS(target)
+        st.graph = target
       })
       //@ts-ignore TODO: add sync property to Query when converting Query to typescript
       query.sync = true
@@ -394,11 +394,11 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
    * @returns The statement added to the store, or the store
    */
   add (
-    subj: Quad_Subject | Quad | Quad[],
-    pred?: Quad_Predicate,
-    obj?: Quad_Object,
-    why?: Quad_Graph
-  ): number {
+    subj: Quad_Subject | Quad | Quad[] | SubjectType | RdfLibQuad | RdfLibQuad[],
+    pred?: Quad_Predicate | PredicateType,
+    obj?: Quad_Object | ObjectType | string,
+    why?: Quad_Graph | GraphType
+  ): this {
     var i: number
     if (arguments.length === 1) {
       if (subj instanceof Array) {
@@ -410,7 +410,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
       } else if (isStore(subj)) {
         this.add(subj.statements)
       }
-      return (subj as Quad[]).length
+      return this
     }
     var actions: Function[]
     var st: RdfLibQuad
@@ -453,7 +453,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
     }
     if (this.holds(subj, rdfLibPredicate, rdfLibObject, rdfLibGraph)) { // Takes time but saves duplicates
       // console.log('rdflib: Ignoring dup! {' + subj + ' ' + pred + ' ' + obj + ' ' + why + '}')
-      return 0 // @@better to return self in all cases?
+      return this // @@better to return self in all cases?
     }
     // If we are tracking provenance, every thing should be loaded into the store
     // if (done) return this.rdfFactory.quad(subj, pred, obj, why)
@@ -485,7 +485,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
       }
     }
 
-    return 1
+    return this
   }
 
   /**
@@ -572,9 +572,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
     return this
   }
 
-  compareTerm (...args: Term[]): number {
-    const u1 = args[0]
-    const u2 = args[1]
+  compareTerms (u1: Term, u2: Term): number {
     // Keep compatibility with downstream classOrder changes
     if (Object.prototype.hasOwnProperty.call(u1, 'compareTerm')) {
       return (u1 as RdfLibTerm).compareTerm(u2 as RdfLibTerm)
@@ -643,7 +641,7 @@ export default class IndexedFormula extends Formula { // IN future - allow pass 
     // 03-21-2010
     const u1 = this.canon(u1in) as Quad_Subject
     const u2 = this.canon(u2in) as Quad_Subject
-    var d = this.compareTerm(u1, u2)
+    var d = this.compareTerms(u1, u2)
     if (!d) {
       return true // No information in {a = a}
     }

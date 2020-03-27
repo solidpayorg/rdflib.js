@@ -1,10 +1,10 @@
 import RdfLibTerm from './node-internal'
-import RDFlibVariable from './variable'
-import RDFlibBlankNode from './blank-node'
+import RdfLibVariable from './variable'
+import RdfLibBlankNode from './blank-node'
 import Collection from './collection'
-import RDFlibLiteral from './literal'
-import RDFlibNamedNode from './named-node'
-import RDFlibDefaultGraph from './default-graph'
+import RdfLibLiteral from './literal'
+import RdfLibNamedNode from './named-node'
+import RdfLibDefaultGraph from './default-graph'
 import { DataFactory } from './factories/factory-types'
 import IndexedFormula from './store'
 import Fetcher from './fetcher'
@@ -71,14 +71,10 @@ export type ValueType = Term | Node | Date | string | number | boolean | undefin
  * Variables are missing, and the statement requires specific types of terms (e.g. NamedNode instead of Term).
  */
 
-/** An RDF/JS Subject */
-export type SubjectType = RDFlibBlankNode | RDFlibNamedNode | RDFlibVariable
-/** An RDF/JS Predicate */
-export type PredicateType = RDFlibNamedNode | RDFlibVariable
-/** An RDF/JS Object */
-export type ObjectType = RDFlibNamedNode | RDFlibLiteral | Collection | RDFlibBlankNode | RDFlibVariable | Empty
-/** An RDF/JS Graph */
-export type GraphType = RDFlibDefaultGraph | RDFlibNamedNode | RDFlibVariable // | Formula
+export type SubjectType = RdfLibBlankNode | RdfLibNamedNode | RdfLibVariable | RdfLibLiteral
+export type PredicateType = RdfLibBlankNode | RdfLibNamedNode | RdfLibVariable
+export type ObjectType = RdfLibNamedNode | RdfLibLiteral | Collection | RdfLibBlankNode | RdfLibVariable | Empty
+export type GraphType = RdfLibDefaultGraph | RdfLibNamedNode | RdfLibVariable // | Formula
 
 export interface Bindings {
   [id: string]: Term;
@@ -88,10 +84,10 @@ export interface Bindings {
 export type FromValueReturns<C extends RdfLibTerm = any> = RdfLibTerm | undefined | null | Collection<C>
 
 export interface IRDFlibDataFactory extends DataFactory<
-  RDFlibNamedNode | RDFlibBlankNode | RDFlibLiteral | Collection | Statement
+  RdfLibNamedNode | RdfLibBlankNode | RdfLibLiteral | Collection | Statement
 > {
   fetcher: (store: IndexedFormula, options: any) => Fetcher
-  lit: (val: string, lang?: string, dt?: NamedNode) => RDFlibLiteral
+  lit: (val: string, lang?: string, dt?: NamedNode) => RdfLibLiteral
   graph: (features?, opts?) => IndexedFormula
   st: (
     subject: Quad_Subject,

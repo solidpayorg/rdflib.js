@@ -1,5 +1,24 @@
-import { ValueType, Bindings, FromValueReturns, TermType } from './types'
+import {
+  ValueType,
+  Bindings,
+  FromValueReturns,
+  TermType,
+  NamedNodeTermType,
+  BlankNodeTermType,
+  LiteralTermType,
+  DefaultGraphTermType,
+  VariableTermType,
+  CollectionTermType, EmptyTermType, GraphTermType
+} from './types'
+import Variable from './variable'
+import NamedNode from './named-node'
+import BlankNode from './blank-node'
+import DefaultGraph from './default-graph'
 import { Term } from './tf-types'
+import Literal from './literal'
+import Collection from './collection'
+import Empty from './empty'
+import IndexedFormula from './store'
 
 /**
  * The superclass of all RDF Statement objects, that is
@@ -116,7 +135,30 @@ export default abstract class Node {
   }
 
   static fromRDFJS(node: Term): Node {
-    const NodeType = node.constructor[Symbol.species]
-    return new NodeType(node.value)
+    switch (node.termType) {
+      case BlankNodeTermType:
+        return new BlankNode(node.value)
+      case CollectionTermType:
+        const collection = node as Collection
+        return new Collection(collection.elements)
+      case DefaultGraphTermType:
+        return new DefaultGraph()
+      case EmptyTermType:
+        return new Empty()
+      case GraphTermType:
+        const graph = node as IndexedFormula
+        return new IndexedFormula()
+      case LiteralTermType:
+        const literal = node as Literal
+        return new Literal(node.value, literal.language, literal.datatype)
+      case NamedNodeTermType:
+        return new NamedNode(node.value)
+      case VariableTermType:
+        return new Variable(node.value)
+    }
+    return new Collection()
+    // sadly not
+    // const NodeType = node.constructor[Symbol.species] // won't work without polyfill, which I think makes this solution outside what I should do for now
+    // return new NodeType(node.value)
   }
 }

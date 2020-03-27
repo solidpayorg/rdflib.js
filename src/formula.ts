@@ -9,7 +9,7 @@ import Serializer from './serialize'
 import RdfLibQuad from './statement'
 import {
   Bindings,
-  GraphTermType,
+  GraphTermType, GraphType, ObjectType, PredicateType, SubjectType
 } from './types'
 import { isStatement } from './utils/terms'
 import RdfLibVariable from './variable'
@@ -31,8 +31,8 @@ import {
 import Fetcher from './fetcher'
 
 export interface FormulaOpts {
-  dataCallback?: (q: Quad) => void
-  rdfArrayRemove?: (arr: Quad[], q: Quad) => void
+  dataCallback?: (q: RdfLibQuad) => void
+  rdfArrayRemove?: (arr: RdfLibQuad[], q: RdfLibQuad) => void
   rdfFactory?: RdfJsDataFactory
 }
 
@@ -112,13 +112,13 @@ export default class Formula extends RdfLibTerm {
    * @param graph - the last part of the statement
    */
   add (
-    subject: Quad_Subject | Quad | Quad[],
-    predicate: Quad_Predicate,
-    object: Quad_Object,
-    graph?: Quad_Graph
-  ): number {
-    return this.statements
-      .push(this.rdfFactory.quad(subject, predicate, object, graph))
+    subject: Quad_Subject | Quad | Quad[] | SubjectType | RdfLibQuad | RdfLibQuad[],
+    predicate: Quad_Predicate | PredicateType,
+    object: Quad_Object | ObjectType | string,
+    graph?: Quad_Graph | GraphType
+  ): this {
+    this.statements.push(this.rdfFactory.quad(subject, predicate, object, graph))
+    return this
   }
 
   /** Add a statment object
@@ -382,11 +382,11 @@ export default class Formula extends RdfLibTerm {
     let members: MembersMap
     let pred: Quad_Predicate
     let ref
-    let ref1: Quad[]
-    let ref2: Term[]
-    let ref3: Quad[]
-    let ref4: Term[]
-    let ref5: Quad[]
+    let ref1: RdfLibQuad[]
+    let ref2: RdfLibTerm[]
+    let ref3: RdfLibQuad[]
+    let ref4: RdfLibTerm[]
+    let ref5: RdfLibQuad[]
     let seeds
     let st
     let u: number
@@ -557,12 +557,12 @@ export default class Formula extends RdfLibTerm {
     subject: Quad_Subject,
     doc: Quad_Graph,
     excludePredicateURIs?: ReadonlyArray<string>
-  ): Quad[] {
+  ): RdfLibQuad[] {
     excludePredicateURIs = excludePredicateURIs || []
     let todo = [subject]
     let done: { [k: string]: boolean } = {}
     let doneArcs: { [k: string]: boolean }  = {}
-    let result: Quad[] = []
+    let result: RdfLibQuad[] = []
     let self = this
     let follow = function (x) {
       let queue = function (x) {
@@ -571,7 +571,7 @@ export default class Formula extends RdfLibTerm {
           todo.push(x)
         }
       }
-      let sts = self.statementsMatching(null, null, x, doc)
+      let sts: RdfLibQuad[] = self.statementsMatching(null, null, x, doc)
         .concat(self.statementsMatching(x, null, null, doc))
       sts = sts.filter(function (st): boolean {
         if (excludePredicateURIs![st.predicate.value]) return false
