@@ -2,7 +2,16 @@ import Fetcher from './fetcher'
 import log from './log'
 import { docpart } from './uri'
 import { string_startswith } from './utils-js'
-import { RdfJsDataFactory, Quad, Quad_Subject, Term } from './tf-types'
+import BlankNode from './blank-node'
+import NamedNode from './named-node'
+import Variable from './variable'
+import Collection from './collection'
+import Empty from './empty'
+import Node from './node-internal'
+import Statement from './statement'
+import Literal from './literal'
+import DefaultGraph from './default-graph'
+import { RdfJsDataFactory } from './tf-types'
 
 /** RDF/JS spec Typeguards */
 
@@ -78,26 +87,36 @@ const rdf = {
  * @param data - The terms to expand into the list.
  * @return The {data} as a set of statements.
  */
-export function arrayToStatements(
-  rdfFactory: RdfJsDataFactory,
-  subject: Quad_Subject,
-  data: Term[]
-): Quad[] {
-  const statements: Quad[] = []
+export function arrayToStatements<
+  BLANK_NODE = BlankNode,
+  COLLECTION = Collection,
+  DEFAULT_GRAPH = DefaultGraph,
+  EMPTY = Empty,
+  LITERAL = Literal,
+  NAMED_NODE = NamedNode,
+  STATEMENT = Statement,
+  TERM = Node,
+  VARIABLE = Variable
+>(
+  rdfFactory: RdfJsDataFactory<BLANK_NODE, COLLECTION, DEFAULT_GRAPH, EMPTY, LITERAL, NAMED_NODE, STATEMENT, TERM, VARIABLE>,
+  subject: BLANK_NODE | NAMED_NODE | VARIABLE,
+  data: TERM[]
+): STATEMENT[] {
+  const statements: STATEMENT[] = []
 
-  data.reduce<Quad_Subject>((id, _listObj, i, listData) => {
-    statements.push(rdfFactory.quad(id, rdfFactory.namedNode(rdf.first), listData[i]))
+  data.forEach((obj, i) => {
+    statements.push(rdfFactory.quad(subject, rdfFactory.namedNode(rdf.first), obj as unknown as NAMED_NODE))
 
     let nextNode
-    if (i < listData.length - 1) {
+    if (i < data.length - 1) {
       nextNode = rdfFactory.blankNode()
-      statements.push(rdfFactory.quad(id, rdfFactory.namedNode(rdf.rest), nextNode))
+      statements.push(rdfFactory.quad(subject, rdfFactory.namedNode(rdf.rest), nextNode))
     } else {
-      statements.push(rdfFactory.quad(id, rdfFactory.namedNode(rdf.rest), rdfFactory.namedNode(rdf.nil)))
+      statements.push(rdfFactory.quad(subject, rdfFactory.namedNode(rdf.rest), rdfFactory.namedNode(rdf.nil)))
     }
 
     return nextNode
-  }, subject)
+  })
 
   return statements
 }

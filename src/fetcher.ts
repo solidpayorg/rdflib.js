@@ -46,14 +46,7 @@ import {
   ContentType, TurtleContentType, RDFXMLContentType, XHTMLContentType
 } from './types'
 import { termValue } from './utils/termValue'
-import {
-  BlankNode,
-  RdfJsDataFactory,
-  Quad_Graph,
-  NamedNode,
-  Quad_Predicate,
-  Quad_Subject
-} from './tf-types'
+import { RdfJsDataFactory } from './tf-types'
 
 // This is a special fetch which does OIDC auth, catching 401 errors
 const fetch = typeof window === 'undefined' ? solidAuthCli : solidAuthClient

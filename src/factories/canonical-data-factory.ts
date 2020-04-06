@@ -4,10 +4,6 @@ import NamedNode from '../named-node'
 import Statement from '../statement'
 import Variable from '../variable'
 import {
-  SubjectType,
-  PredicateType,
-  ObjectType,
-  GraphType,
   EmptyTermType,
   DefaultGraphTermType,
   VariableTermType,
@@ -17,13 +13,10 @@ import {
 } from '../types'
 import { defaultGraphNode } from '../utils/default-graph-uri'
 import {
-  Comparable,
   DataFactory,
-  DefaultFactoryTypes,
   Feature,
 } from './factory-types'
 import { isQuad, isTerm } from '../utils/terms'
-import { NamedNode as TFNamedNode, Quad, Term } from '../tf-types'
 
 export { defaultGraphURI } from '../utils/default-graph-uri'
 
@@ -51,7 +44,7 @@ const CanonicalDataFactory: DataFactory = {
    * Creates a new blank node
    * @param value - The blank node's identifier
    */
-  blankNode(value?: string): BlankNode {
+  blankNode(value?) {
     return new BlankNode(value)
   },
 
@@ -60,7 +53,7 @@ const CanonicalDataFactory: DataFactory = {
   /**
    * Compares to (rdf) objects for equality.
    */
-  equals(a: Comparable, b: Comparable): boolean {
+  equals(a, b): boolean {
     if (a === b || !a || !b) {
       return true
     }
@@ -93,7 +86,7 @@ const CanonicalDataFactory: DataFactory = {
    * @example Use this to associate data with a term in an object
    *   { obj[id(term)] = "myData" }
    */
-  id (term: Term | Statement | undefined): string {
+  id (term) {
     if (!term) {
       return 'undefined'
     }
@@ -127,8 +120,8 @@ const CanonicalDataFactory: DataFactory = {
    * @param languageOrDatatype - Either the language or the datatype
    */
   literal(
-    value: string | number | boolean | Date,
-    languageOrDatatype?: string | TFNamedNode
+    value,
+    languageOrDatatype?
   ): Literal {
     if (typeof value !== "string" && !languageOrDatatype) {
       return Literal.fromValue(value)
@@ -162,21 +155,21 @@ const CanonicalDataFactory: DataFactory = {
    * @param graph - The containing graph
    */
   quad(
-    subject: Term | SubjectType,
-    predicate: Term | PredicateType,
-    object: Term | ObjectType,
-    graph?: Term | GraphType
+    subject,
+    predicate,
+    object,
+    graph?
   ): Statement {
     graph = graph || defaultGraph()
     return new Statement(subject, predicate, object, graph)
   },
 
-  quadToNQ(q: Statement | Quad): string {
+  quadToNQ(q): string {
     return `${this.termToNQ(q.subject)} ${this.termToNQ(q.predicate)} ${this.termToNQ(q.object)} ${this.termToNQ(q.graph)} .`;
   },
 
   /** Stringify a {term} to n-quads serialization. */
-  termToNQ(term: Term): string {
+  termToNQ(term): string {
     switch (term.termType) {
       case BlankNodeTermType:
         return '_:' + term.value
@@ -194,7 +187,7 @@ const CanonicalDataFactory: DataFactory = {
   },
 
   /** Convert an rdf object (term or quad) to n-quads serialization. */
-  toNQ (term: Term | (DefaultFactoryTypes & Variable)): string {
+  toNQ (term): string {
     if (this.isQuad(term)) {
       return this.quadToNQ(term);
     }
@@ -206,7 +199,7 @@ const CanonicalDataFactory: DataFactory = {
    * Creates a new variable
    * @param name - The name for the variable
    */
-  variable(name?: string): Variable {
+  variable(name?) {
     return new Variable(name)
   },
 }

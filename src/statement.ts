@@ -1,17 +1,12 @@
-import Node from './node-internal'
+import Term from './node-internal'
 import {
   Bindings,
-  GraphType,
-  ObjectType,
-  PredicateType,
-  SubjectType,
-  DefaultGraphTermType,
+  DefaultGraphTermType, GraphType, ObjectType, PredicateType, SubjectType
 } from './types'
 import { defaultGraphNode } from './utils/default-graph-uri'
-import { Quad_Graph, Quad_Object, Quad_Predicate, Quad, Quad_Subject, Term } from './tf-types'
 
 /** A Statement represents an RDF Triple or Quad. */
-export default class Statement implements Quad<SubjectType, PredicateType, ObjectType, GraphType> {
+export default class Statement {
   /** The subject of the triple.  What the Statement is about. */
   subject: SubjectType
 
@@ -45,15 +40,15 @@ export default class Statement implements Quad<SubjectType, PredicateType, Objec
    *  powerful update() which can update more than one document.
    */
   constructor (
-    subject: Quad_Subject | Term,
-    predicate: Quad_Predicate | Term,
-    object: Quad_Object | Term,
-    graph?: Quad_Graph | Term,
+    subject: SubjectType | Term,
+    predicate: PredicateType | Term,
+    object: ObjectType | Term,
+    graph?: GraphType | Term,
   ) {
-    this.subject = Node.fromValue(subject)
-    this.predicate = Node.fromValue(predicate)
-    this.object = Node.fromValue(object)
-    this.graph = graph == undefined ? defaultGraphNode : Node.fromValue(graph) // property currently used by rdflib
+    this.subject = Term.fromValue(subject)
+    this.predicate = Term.fromValue(predicate)
+    this.object = Term.fromValue(object)
+    this.graph = graph == undefined ? defaultGraphNode : Term.fromValue(graph) // property currently used by rdflib
   }
 
   /** @deprecated use {graph} instead */
@@ -69,7 +64,7 @@ export default class Statement implements Quad<SubjectType, PredicateType, Objec
    * Checks whether two statements are the same
    * @param other - The other statement
    */
-  equals (other: Quad): boolean {
+  equals (other: Statement): boolean {
     return (
       other.subject.equals(this.subject) &&
       other.predicate.equals(this.predicate) &&

@@ -9,7 +9,7 @@ import sparqlUpdateParser from './patch-parser'
 import * as Util from './utils-js'
 import Formula from './formula'
 import { ContentType, TurtleContentType, N3ContentType, RDFXMLContentType, XHTMLContentType, HTMLContentType, SPARQLUpdateContentType, JSONLDContentType, NQuadsContentType, NQuadsAltContentType } from './types'
-import { Quad } from './tf-types'
+import Statement from './statement'
 
 type CallbackFunc = (error: any, kb: Formula | null) => void
 
@@ -127,7 +127,7 @@ export default function parse (
     }
   }
 
-  function tripleCallback (err: Error, triple: Quad) {
+  function tripleCallback (err: Error, triple: Statement) {
     if (triple) {
       kb.add(triple.subject, triple.predicate, triple.object, triple.graph)
     } else {

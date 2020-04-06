@@ -6,6 +6,8 @@ import {
   NamedNodeTermType,
   VariableTermType,
 } from './types'
+import Collection from './collection'
+import Empty from './empty'
 
 /**
  * RDF/JS spec Term
@@ -105,30 +107,39 @@ export interface DefaultGraph extends Term {
  *
  * @link https://rdf.js.org/data-model-spec/#datafactory-interface
  */
-export interface RdfJsDataFactory {
+export interface RdfJsDataFactory<
+  BLANK_NODE = BlankNode,
+  COLLECTION = Collection,
+  DEFAULT_GRAPH = DefaultGraph,
+  EMPTY = Empty,
+  LITERAL = Literal,
+  NAMED_NODE = NamedNode,
+  STATEMENT = Quad,
+  TERM = Term,
+  VARIABLE = Variable> {
   /** Returns a new instance of NamedNode. */
-  namedNode: (value: string) => NamedNode,
+  namedNode: (value: string) => NAMED_NODE,
 
   /**
    * Returns a new instance of BlankNode.
    * If the value parameter is undefined a new identifier for the
    * blank node is generated for each call.
    */
-  blankNode: (value?: string) => BlankNode,
+  blankNode: (value?: string) => BLANK_NODE,
 
   /**
    * Returns a new instance of Literal.
    * If languageOrDatatype is a NamedNode, then it is used for the value of datatype.
    * Otherwise languageOrDatatype is used for the value of language. */
-  literal: (value: string, languageOrDatatype: string | NamedNode) => Literal,
+  literal: (value: string, languageOrDatatype: string | NAMED_NODE) => LITERAL,
 
   /** Returns a new instance of Variable. This method is optional. */
-  variable?: (value: string) => Variable,
+  variable?: (value: string) => VARIABLE,
 
   /**
    * Returns an instance of DefaultGraph.
    */
-  defaultGraph: () => DefaultGraph | NamedNode | BlankNode,
+  defaultGraph: () => DEFAULT_GRAPH | NAMED_NODE | BLANK_NODE,
 
   /**
    * Returns a new instance of the specific Term subclass given by original.termType
@@ -136,24 +147,24 @@ export interface RdfJsDataFactory {
    * such that newObject.equals(original) returns true.
    * Not implemented in RDFJS, so optional.
    */
-  fromTerm?: (original: Term) => Term
+  fromTerm?: (original: TERM) => TERM
 
   /**
    * Returns a new instance of Quad, such that newObject.equals(original) returns true.
    * Not implemented in RDFJS, so optional.
    */
-  fromQuad?: (original: Quad) => Quad
+  fromQuad?: (original: STATEMENT) => STATEMENT
 
   /**
    * Returns a new instance of Quad.
    * If graph is undefined or null it MUST set graph to a DefaultGraph.
    */
   quad: (
-    subject: Term,
-    predicate: Term,
-    object: Term,
-    graph?: Term,
-  ) => Quad<any, any, any, any>
+    subject: BLANK_NODE | NAMED_NODE | VARIABLE,
+    predicate: BLANK_NODE | NAMED_NODE | VARIABLE,
+    object: BLANK_NODE | COLLECTION | EMPTY | LITERAL | NAMED_NODE | VARIABLE,
+    graph?: DEFAULT_GRAPH | NAMED_NODE | VARIABLE,
+  ) => STATEMENT
 
   /**
    * Check for specific features/behaviour on the factory.

@@ -14,7 +14,8 @@ import {
   TurtleLegacyContentType,
 } from './types'
 import IndexedFormula from './store'
-import { BlankNode, NamedNode } from './tf-types'
+import NamedNode from './named-node'
+import BlankNode from './blank-node'
 
 /**
  * Serialize to the appropriate format
@@ -46,7 +47,7 @@ export default function serialize (
   try {
     var sz = Serializer(kb)
     if ((opts as any).flags) sz.setFlags((opts as any).flags)
-    var newSts = kb!.statementsMatching(undefined, undefined, undefined, target as NamedNode)
+    var newSts = kb!.statementsMatching(undefined, undefined, undefined, target as unknown as NamedNode)
     var n3String: string
     sz.suggestNamespaces(kb!.namespaces)
     sz.setBase(base)

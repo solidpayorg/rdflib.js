@@ -2,39 +2,29 @@ import ClassOrder from './class-order'
 import Collection from './collection'
 import CanonicalDataFactory from './factories/canonical-data-factory'
 import log from './log'
-import RDFlibNamedNode from './named-node'
+import NamedNode from './named-node'
 import Namespace from './namespace'
-import Node from './node-internal'
+import Term from './node-internal'
 import Serializer from './serialize'
 import Statement from './statement'
 import {
   Bindings,
-  GraphTermType,
+  GraphTermType, GraphType, ObjectType, PredicateType, SubjectType
 } from './types'
 import { isStatement } from './utils/terms'
 import Variable from './variable'
 import {
-  Indexable,
-  TFIDFactoryTypes,
+  DataFactory,
+  Indexable
 } from './factories/factory-types'
 import { appliedFactoryMethods, arrayToStatements } from './utils'
-import {
-  BlankNode,
-  RdfJsDataFactory,
-  Quad_Graph,
-  Quad_Object,
-  Quad_Predicate,
-  Quad,
-  Quad_Subject,
-  Term,
-  NamedNode,
-} from './tf-types'
 import Fetcher from './fetcher'
+import BlankNode from './blank-node'
 
 export interface FormulaOpts {
-  dataCallback?: (q: Quad) => void
-  rdfArrayRemove?: (arr: Quad[], q: Quad) => void
-  rdfFactory?: RdfJsDataFactory
+  dataCallback?: (q: Statement) => void
+  rdfArrayRemove?: (arr: Statement[], q: Statement) => void
+  rdfFactory?: DataFactory
 }
 
 interface BooleanMap {
@@ -42,7 +32,7 @@ interface BooleanMap {
 }
 
 interface MembersMap {
-  [uri: string]: Quad;
+  [uri: string]: Statement;
 }
 
 interface UriMap {
@@ -52,7 +42,7 @@ interface UriMap {
 /**
  * A formula, or store of RDF statements
  */
-export default class Formula extends Node {
+export default class Formula extends Term {
   termType: typeof GraphTermType = GraphTermType
 
   classOrder = ClassOrder.Graph
@@ -83,7 +73,7 @@ export default class Formula extends Node {
   rdfFactory: any
 
   /** The stored statements */
-  statements: Quad[];
+  statements: Statement[];
 
   /**
    * Initializes this formula
@@ -96,7 +86,7 @@ export default class Formula extends Node {
    * @param opts.rdfFactory - The rdf factory that should be used by the store
 */
   constructor (
-    statements?: Quad[],
+    statements?: Statement[],
     constraints?: ReadonlyArray<any>,
     initBindings?: ReadonlyArray<any>,
     optional?: ReadonlyArray<any>,
@@ -122,13 +112,13 @@ export default class Formula extends Node {
    * @param graph - the last part of the statement
    */
   add (
-    subject: Quad_Subject | Quad | Quad[] | Statement | Statement[],
-    predicate?: Quad_Predicate,
+    subject: SubjectType | Statement | Statement[],
+    predicate?: PredicateType,
     object?: Term | string,
-    graph?: Quad_Graph
-  ): Quad | null | this | number {
+    graph?: GraphType
+  ): Statement | null | this | number {
     if (arguments.length === 1) {
-      (subject as Quad[]).forEach(st => this.add(st.subject, st.predicate, st.object, st.graph))
+      (subject as Statement[]).forEach(st => this.add(st.subject, st.predicate, st.object, st.graph))
     }
     return this.statements.push(this.rdfFactory.quad(subject, predicate, object, graph))
   }
@@ -136,7 +126,7 @@ export default class Formula extends Node {
   /** Add a statment object
    * @param {Statement} statement - An existing constructed statement to add
    */
-  addStatement (statement: Quad): number {
+  addStatement (statement: Statement): number {
     return this.statements.push(statement)
   }
 
@@ -149,7 +139,7 @@ export default class Formula extends Node {
    * Adds all the statements to this formula
    * @param statements - A collection of statements
    */
-  addAll (statements: Quad[]): void {
+  addAll (statements: Statement[]): void {
     statements.forEach(quad => {
       this.add(quad.subject, quad.predicate, quad.object, quad.graph)
     })
@@ -168,10 +158,10 @@ export default class Formula extends Node {
   * @returns A node which match the wildcard position, or null
   */
   any(
-    s?: Quad_Subject | null,
-    p?: Quad_Predicate | null,
-    o?: Quad_Object | null,
-    g?: Quad_Graph | null
+    s?: SubjectType | null,
+    p?: PredicateType | null,
+    o?: ObjectType | null,
+    g?: GraphType | null
   ): Term | null {
     const st = this.anyStatementMatching(s, p, o, g)
     if (st == null) {
@@ -195,10 +185,10 @@ export default class Formula extends Node {
    * @param g The graph that contains the statement
    */
   anyValue(
-    s?: Quad_Subject | null,
-    p?: Quad_Predicate | null,
-    o?: Quad_Object | null,
-    g?: Quad_Graph | null
+    s?: SubjectType | null,
+    p?: PredicateType | null,
+    o?: ObjectType | null,
+    g?: GraphType | null
   ): string | void {
     const y = this.any(s, p, o, g)
     return y ? y.value : void 0
@@ -212,24 +202,24 @@ export default class Formula extends Node {
    * @param g The graph that contains the statement
    */
   anyJS(
-    s?: Quad_Subject | null,
-    p?: Quad_Predicate | null,
-    o?: Quad_Object | null,
-    g?: Quad_Graph | null
+    s?: SubjectType | null,
+    p?: PredicateType | null,
+    o?: ObjectType | null,
+    g?: GraphType | null
   ): any {
     const y = this.any(s, p, o, g)
-    return y ? Node.toJS(y) : void 0
+    return y ? Term.toJS(y) : void 0
   }
 
   /**
    * Gets the first statement that matches the specified pattern
    */
   anyStatementMatching(
-    s?: Quad_Subject | null,
-    p?: Quad_Predicate | null,
-    o?: Quad_Object | null,
-    g?: Quad_Graph | null
-  ): Quad | undefined {
+    s?: SubjectType | null,
+    p?: PredicateType | null,
+    o?: ObjectType | null,
+    g?: GraphType | null
+  ): Statement | undefined {
     let x = this.statementsMatching(s, p, o, g, true)
     if (!x || x.length === 0) {
       return undefined
@@ -243,7 +233,7 @@ export default class Formula extends Node {
    *
    * Falls back to the rdflib hashString implementation if the given factory doesn't support id.
    */
-  id (term: TFIDFactoryTypes): Indexable {
+  id (term: Term): Indexable {
     return this.rdfFactory.id(term)
   }
 
@@ -256,15 +246,15 @@ export default class Formula extends Node {
    * @param o - A node to search for as object, or if null, a wildcard
    * @param g - A node to search for as graph, or if null, a wildcard
    * @param justOne - flag - stop when found one rather than get all of them?
-   * @returns {Array<Node>} - An array of nodes which match the wildcard position
+   * @returns {Array<Term>} - An array of nodes which match the wildcard position
    */
   statementsMatching<JustOne extends boolean = false>(
-    s?: Quad_Subject | null,
-    p?: Quad_Predicate | null,
-    o?: Quad_Object | null,
-    g?: Quad_Graph | null,
+    s?: SubjectType | null,
+    p?: PredicateType | null,
+    o?: ObjectType | null,
+    g?: GraphType | null,
     justOne?: boolean
-  ): Quad[] {
+  ): Statement[] {
     const sts = this.statements.filter(st =>
       (!s || s.equals(st.subject)) &&
       (!p || p.equals(st.predicate)) &&
@@ -336,13 +326,13 @@ export default class Formula extends Node {
   * @param p - A node to search for as predicate, or if null, a wildcard
   * @param o - A node to search for as object, or if null, a wildcard
   * @param g - A node to search for as graph, or if null, a wildcard
-  * @returns {Array<Node>} - An array of nodes which match the wildcard position
+  * @returns {Array<Term>} - An array of nodes which match the wildcard position
   */
   each(
-    s?: Quad_Subject | null,
-    p?: Quad_Predicate | null,
-    o?: Quad_Object | null,
-    g?: Quad_Graph | null
+    s?: SubjectType | null,
+    p?: PredicateType | null,
+    o?: ObjectType | null,
+    g?: GraphType | null
   ): Term[] {
     const results: Term[] = []
     let sts = this.statementsMatching(s, p, o, g, false)
@@ -392,13 +382,13 @@ export default class Formula extends Node {
     let len4: number
     let m: number
     let members: MembersMap
-    let pred: Quad_Predicate
+    let pred: PredicateType
     let ref
-    let ref1: Quad[]
+    let ref1: Statement[]
     let ref2: Term[]
-    let ref3: Quad[]
+    let ref3: Statement[]
     let ref4: Term[]
-    let ref5: Quad[]
+    let ref5: Statement[]
     let seeds
     let st
     let u: number
@@ -419,7 +409,7 @@ export default class Formula extends Node {
         this.rdfFactory.namedNode('http://www.w3.org/2000/01/rdf-schema#domain'),
         this.fromNT(t))
       for (let l = 0, len1 = ref2.length; l < len1; l++) {
-        pred = ref2[l] as Quad_Predicate
+        pred = ref2[l] as PredicateType
         ref3 = this.statementsMatching(void 0, pred)
         for (m = 0, len2 = ref3.length; m < len2; m++) {
           st = ref3[m]
@@ -430,7 +420,7 @@ export default class Formula extends Node {
         this.rdfFactory.namedNode('http://www.w3.org/2000/01/rdf-schema#range'),
         this.fromNT(t))
       for (let q = 0, len3 = ref4.length; q < len3; q++) {
-        pred = ref4[q] as Quad_Predicate
+        pred = ref4[q] as PredicateType
         ref5 = this.statementsMatching(void 0, pred)
         for (u = 0, len4 = ref5.length; u < len4; u++) {
           st = ref5[u]
@@ -451,7 +441,7 @@ export default class Formula extends Node {
    * Get all the Classes of which we can RDFS-infer the subject is a member
    * @param subject - A named node
    */
-  findMemberURIs(subject: Node): UriMap {
+  findMemberURIs(subject: Term): UriMap {
     return this.NTtoURI(this.findMembersNT(subject))
   }
 
@@ -462,7 +452,7 @@ export default class Formula extends Node {
    * Does NOT return terms, returns URI strings.
    * We use NT representations in this version because they handle blank nodes.
    */
-  findSubClassesNT(subject: Node): { [uri: string]: boolean } {
+  findSubClassesNT(subject: Term): { [uri: string]: boolean } {
     let types = {}
     types[subject.toNT()] = true
     return this.transitiveClosure(
@@ -480,7 +470,7 @@ export default class Formula extends Node {
    * Does NOT return terms, returns URI strings.
    * We use NT representations in this version because they handle blank nodes.
    */
-  findSuperClassesNT(subject: Node): { [uri: string]: boolean } {
+  findSuperClassesNT(subject: Term): { [uri: string]: boolean } {
     let types = {}
     types[subject.toNT()] = true
     return this.transitiveClosure(types,
@@ -553,7 +543,7 @@ export default class Formula extends Node {
    * We use NT representations in this version because they handle blank nodes.
    * @param subject - A subject node
    */
-  findTypeURIs(subject: Quad_Subject): UriMap {
+  findTypeURIs(subject: SubjectType): UriMap {
     return this.NTtoURI(this.findTypesNT(subject))
   }
 
@@ -564,15 +554,15 @@ export default class Formula extends Node {
    * @returns an array of statements, duplicate statements are suppresssed.
    */
   connectedStatements(
-    subject: Quad_Subject,
-    doc: Quad_Graph,
+    subject: SubjectType,
+    doc: GraphType,
     excludePredicateURIs?: ReadonlyArray<string>
-  ): Quad[] {
+  ): Statement[] {
     excludePredicateURIs = excludePredicateURIs || []
     let todo = [subject]
     let done: { [k: string]: boolean } = {}
     let doneArcs: { [k: string]: boolean }  = {}
-    let result: Quad[] = []
+    let result: Statement[] = []
     let self = this
     let follow = function (x) {
       let queue = function (x) {
@@ -765,13 +755,13 @@ export default class Formula extends Node {
    * Creates a new formula with the substituting bindings applied
    * @param bindings - The bindings to substitute
    */
-  substitute<T extends Node = Formula>(bindings: Bindings): T {
+  substitute<T extends Term = Formula>(bindings: Bindings): T {
     let statementsCopy = this.statements.map(function (ea) {
       return (ea as Statement).substitute(bindings)
     })
     console.log('Formula subs statmnts:' + statementsCopy)
     const y = new Formula()
-    y.addAll(statementsCopy as Quad[])
+    y.addAll(statementsCopy as Statement[])
     console.log('indexed-form subs formula:' + y)
     return y as unknown as T
   }
@@ -794,10 +784,10 @@ export default class Formula extends Node {
    * @param g - The graph that contains the statement
    */
   the (
-    s?: Quad_Subject | null,
-    p?: Quad_Predicate | null,
-    o?: Quad_Object | null,
-    g?: Quad_Graph | null
+    s?: SubjectType | null,
+    p?: PredicateType | null,
+    o?: ObjectType | null,
+    g?: GraphType | null
   ): Term | null | undefined {
     let x = this.any(s, p, o, g)
     if (x == null) {
@@ -817,7 +807,7 @@ export default class Formula extends Node {
    */
   transitiveClosure(
     seeds: BooleanMap,
-    predicate: Quad_Predicate,
+    predicate: PredicateType,
     inverse?: boolean
   ): {
     [uri: string]: boolean;
@@ -838,7 +828,7 @@ export default class Formula extends Node {
       }
       sups = inverse ?
         this.each(void 0, predicate, this.fromNT(t))
-        : this.each(this.fromNT(t) as Quad_Predicate, predicate)
+        : this.each(this.fromNT(t) as PredicateType, predicate)
       for (i = 0, len = sups.length; i < len; i++) {
         elt = sups[i]
         s = elt.toNT()
@@ -862,9 +852,9 @@ export default class Formula extends Node {
    * @param types - The types
    */
   topTypeURIs(types: {
-    [id: string]: string | RDFlibNamedNode;
+    [id: string]: string | NamedNode;
   }): {
-    [id: string]: string | RDFlibNamedNode;
+    [id: string]: string | NamedNode;
   } {
     let i
     let j
@@ -926,10 +916,10 @@ export default class Formula extends Node {
    * @param g - The graph that contains the statement
    */
   whether(
-    s?: Quad_Subject | null,
-    p?: Quad_Predicate | null,
-    o?: Quad_Object | null,
-    g?: Quad_Graph | null
+    s?: SubjectType | null,
+    p?: PredicateType | null,
+    o?: ObjectType | null,
+    g?: GraphType | null
   ): number {
     return this.statementsMatching(s, p, o, g, false).length
   }
